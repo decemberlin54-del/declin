@@ -39,19 +39,21 @@
 - [ ] 在 `06_数据统计/` 建立母题覆盖率统计
 - [ ] 形成项目申报书框架
 
+## 本机路径（Windows）
+
+```
+C:\Users\Bechodan1209\Documents\2026 语文教案\初中语文母题研究\
+```
+
+父目录说明见 `../../README.md`。
+
 ## 用 Cursor 打开
 
-**本机（推荐）**
+1. **File → Open Folder**
+2. 选择 `C:\Users\Bechodan1209\Documents\2026 语文教案`（推荐打开整个工作区）
 
-1. 拉取仓库：`git pull`
-2. 在 Cursor 中选择 **File → Open Folder**
-3. 打开 `初中语文母题研究` 文件夹（或整个仓库根目录）
-
-**命令行（若已安装 Cursor CLI）**
-
-```bash
-cursor "/path/to/declin/初中语文母题研究"
-```
+首次安装或换电脑：运行 `../../scripts/首次安装到本机.ps1`  
+写完保存到云端：运行 `../../scripts/保存并上传云端.ps1`
 
 ## 工作原则
 
