@@ -193,154 +193,382 @@ DESIGN_ESSAY2_SOURCE = "（综合自袁珂《中国神话传说》、鲁迅及�
 BLANK_LINE = "\u3000" * 50
 
 
-def build_homework_design():
+def _design_doc_setup():
   doc = Document()
   sec = doc.sections[0]
   sec.page_width = Cm(21)
   sec.page_height = Cm(29.7)
   sec.left_margin = Cm(2.5)
   sec.right_margin = Cm(2.5)
+  return doc
 
-  def para(text, bold=False, center=False):
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER if center else WD_ALIGN_PARAGRAPH.LEFT
-    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
-    r = p.add_run(text)
-    r.font.name = "宋体"
-    r._element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
-    r.font.bold = bold
 
-  def blanks(n=3):
-    for _ in range(n):
-      para(BLANK_LINE)
+def _design_para(doc, text, bold=False, center=False, color=None):
+  p = doc.add_paragraph()
+  p.alignment = WD_ALIGN_PARAGRAPH.CENTER if center else WD_ALIGN_PARAGRAPH.LEFT
+  p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
+  r = p.add_run(text)
+  r.font.name = "宋体"
+  r._element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
+  r.font.bold = bold
+  if color:
+    from docx.shared import RGBColor
+    r.font.color.rgb = RGBColor(*color)
+  return p
 
-  para("单元作业设计", bold=True, center=True)
-  para("")
-  para("阅读：")
-  para("（一）想象与真实")
-  para("                         编者")
+
+def _design_blanks(doc, n=3):
+  for _ in range(n):
+    _design_para(doc, BLANK_LINE)
+
+
+def build_homework_design(with_answers=False):
+  doc = _design_doc_setup()
+  title = "七年级上册第六单元单元作业设计（参考答案）" if with_answers else "单元作业设计"
+  _design_para(doc, title, bold=True, center=True)
+  _design_para(doc, "")
+  _design_para(doc, "阅读：")
+  _design_para(doc, "（一）想象与真实")
+  _design_para(doc, "                         编者")
   for line in DESIGN_ESSAY1:
-    para(line)
-  para(DESIGN_ESSAY1_SOURCE)
-  para("(有改动)")
-  para("1.请简要分析第①段和最后一段在文中的作用。")
-  blanks()
-  para("")
-  para("2.阅读第④⑥段，按照表格中的提示，在空白处填上相应的文字。")
+    _design_para(doc, line)
+  _design_para(doc, DESIGN_ESSAY1_SOURCE)
+  _design_para(doc, "(有改动)")
+  _design_para(doc, "1.请简要分析第①段和最后一段在文中的作用。")
+  if with_answers:
+    _design_para(doc, "【答案】", bold=True)
+    _design_para(
+        doc,
+        "第①段：引用爱因斯坦的名言，强调想象力的重要价值，引出全文论述的话题——"
+        "“想象与真实”的关系，起总领全文的作用。",
+    )
+    _design_para(
+        doc,
+        "最后一段（第⑩段）：总结全文中心观点，指出真正的想象不是逃避现实，"
+        "而是以更丰富的形式回到现实；同时由阅读中的辨别，延伸到生活中辨别信息真伪，"
+        "首尾呼应，深化主题。",
+    )
+    _design_para(doc, "【评分要点】各2分，共4分。答出“引出话题/总领”与“总结/升华/呼应”即可得分。")
+  else:
+    _design_blanks(doc)
+  _design_para(doc, "")
+  _design_para(doc, "2.阅读第④⑥段，按照表格中的提示，在空白处填上相应的文字。")
   tbl1 = doc.add_table(rows=4, cols=3)
   tbl1.style = "Table Grid"
   for ci, h in enumerate(["文体", "想象特点", "表达的真实"]):
     tbl1.rows[0].cells[ci].text = h
   tbl1.rows[1].cells[0].text = "神话改写（《女娲造人》）"
   tbl1.rows[1].cells[1].text = "在古籍基础上加入人的情感"
-  tbl1.rows[1].cells[2].text = ""
+  tbl1.rows[1].cells[2].text = "" if not with_answers else "对生命起源的好奇、对创造与母爱的歌颂"
   tbl1.rows[2].cells[0].text = "神魔小说（《西游记》）"
-  tbl1.rows[2].cells[1].text = ""
+  tbl1.rows[2].cells[1].text = "" if not with_answers else "变化无穷却各有克制，神魔富有人情"
   tbl1.rows[2].cells[2].text = "自由与规则、人情世故"
   tbl1.rows[3].cells[0].text = "科幻（《三体》等）"
   tbl1.rows[3].cells[1].text = "以科学知识为基础展开宏大想象"
-  tbl1.rows[3].cells[2].text = ""
-  para("")
-  para(
+  tbl1.rows[3].cells[2].text = "" if not with_answers else "对人类命运、文明走向的反思"
+  if with_answers:
+    _design_para(doc, "【评分要点】每空1分，共3分。意思相近即可得分。")
+  _design_para(doc, "")
+  _design_para(
+      doc,
       "3.第⑤段引用鲁迅的话，写出了神魔小说怎样的艺术特色？"
-      "表现了作者怎样的观点？"
+      "表现了作者怎样的观点？",
   )
-  para("")
-  para("4.联系本文及本单元学习，谈谈你对“想象必须扎根于真实”的理解。（50字以内）")
-  blanks()
-  para("（二）倾听远古的神话")
-  para("                         编者")
+  if with_answers:
+    _design_para(doc, "【答案】", bold=True)
+    _design_para(
+        doc,
+        "艺术特色：神魔形象虽奇幻离奇，却富有人情味与世俗智慧，"
+        "“使神魔皆有人情，精魅亦通世故”。",
+    )
+    _design_para(
+        doc,
+        "作者观点：文学想象可以大胆奇特，但必须服从情节逻辑与人物心理的真实，"
+        "不能脱离生活情理。",
+    )
+    _design_para(doc, "【评分要点】艺术特色2分，作者观点2分，共4分。")
+  else:
+    _design_para(doc, "")
+  _design_para(doc, "4.联系本文及本单元学习，谈谈你对“想象必须扎根于真实”的理解。（50字以内）")
+  if with_answers:
+    _design_para(doc, "【答案】", bold=True)
+    _design_para(
+        doc,
+        "想象源于生活观察与情感体验，可以超越现实，但不能凭空编造；"
+        "好的想象既要新奇，也要能照见人心与生活。",
+    )
+    _design_para(doc, "【评分要点】2分。答出“源于现实/有依据”与“表达真实/不脱离生活”即可。")
+  else:
+    _design_blanks(doc)
+  _design_para(doc, "（二）倾听远古的神话")
+  _design_para(doc, "                         编者")
   for line in DESIGN_ESSAY2:
-    para(line)
-  para(DESIGN_ESSAY2_SOURCE)
-  para("(有改动)")
-  para("1.作者围绕“神话与想象”写了哪几方面的内容？请用简洁的语言概括。")
-  blanks()
-  para("2.说说标题“倾听远古的神话”有什么作用。")
-  blanks(2)
-  para(
+    _design_para(doc, line)
+  _design_para(doc, DESIGN_ESSAY2_SOURCE)
+  _design_para(doc, "(有改动)")
+  _design_para(doc, "1.作者围绕“神话与想象”写了哪几方面的内容？请用简洁的语言概括。")
+  if with_answers:
+    _design_para(doc, "【答案】", bold=True)
+    _design_para(doc, "①神话文物承载先民对自然与生命的追问；②袁珂研究神话的意义；")
+    _design_para(doc, "③典型神话故事蕴含的民族精神；④《女娲造人》的神话改写特点；")
+    _design_para(doc, "⑤《西游记》的神魔斗法想象；⑥名家评论与单元课文在“想象力博物馆”中的价值；")
+    _design_para(doc, "⑦神话、神魔、寓言对当代阅读的启示。（答出4点即可）")
+    _design_para(doc, "【评分要点】每点1分，共4分，答出任意4点得满分。")
+  else:
+    _design_blanks(doc)
+  _design_para(doc, "2.说说标题“倾听远古的神话”有什么作用。")
+  if with_answers:
+    _design_para(doc, "【答案】", bold=True)
+    _design_para(doc, "①点明写作对象——神话；②“倾听”生动形象，表明应以专注、虔诚的态度走近神话；")
+    _design_para(doc, "③暗示神话虽属远古，仍有现实意义，能给人启示；④激发读者阅读兴趣。")
+    _design_para(doc, "【评分要点】每点1分，共4分，答出2—3点即可得3分以上。")
+  else:
+    _design_blanks(doc, 2)
+  _design_para(
+      doc,
       "3.文中写“女娲造人”的改写与“孙悟空斗法”的神魔想象，"
-      "分别说明了怎样的想象特点？"
+      "分别说明了怎样的想象特点？",
   )
-  blanks(3)
-  para("4.请从修辞运用的角度赏析文中画线的两个句子。")
-  para("（1）它们沉默地诉说着一个民族的童年：先民仰望星空，也俯察大地，把对风雨雷电的惊奇、对生命起源的追问，化作了盘古、女娲、夸父等神话形象。")
-  blanks(3)
-  para("（2）愿每一位同学都能在“想象力博物馆”中，找到属于自己的那束光——它来自阅读，也来自你对生活的观察与思考。")
-  blanks(3)
-  para("")
-  para("语言运用：")
-  para(
+  if with_answers:
+    _design_para(doc, "【答案】", bold=True)
+    _design_para(
+        doc,
+        "《女娲造人》：属于“创世型”想象，在古籍记载基础上加入女娲的孤独、喜悦与辛劳，"
+        "让神具有人的情感，寄寓对生命与创造的歌颂。",
+    )
+    _design_para(
+        doc,
+        "“孙悟空斗法”：属于“斗法型”想象，变化看似自由，却暗含“相克”的规则，"
+        "既有趣味，又体现“自由与规则”的统一，神魔富有人情。",
+    )
+    _design_para(doc, "【评分要点】各3分，共6分。须分别作答，答出想象类型与表达效果。")
+  else:
+    _design_blanks(doc, 3)
+  _design_para(doc, "4.请从修辞运用的角度赏析文中画线的两个句子。")
+  _design_para(
+      doc,
+      "（1）它们沉默地诉说着一个民族的童年：先民仰望星空，也俯察大地，"
+      "把对风雨雷电的惊奇、对生命起源的追问，化作了盘古、女娲、夸父等神话形象。",
+  )
+  if with_answers:
+    _design_para(doc, "【答案】", bold=True)
+    _design_para(
+        doc,
+        "运用拟人，“沉默地诉说”赋予文物以人的情感，生动亲切；"
+        "“仰望星空，也俯察大地”句式整齐，写出先民观察世界的广阔视野；"
+        "把抽象的民族童年化为具体神话形象，形象而富有感染力。",
+    )
+    _design_para(doc, "【评分要点】3分。须指出修辞手法并分析表达效果。")
+  else:
+    _design_blanks(doc, 3)
+  _design_para(
+      doc,
+      "（2）愿每一位同学都能在“想象力博物馆”中，找到属于自己的那束光——"
+      "它来自阅读，也来自你对生活的观察与思考。",
+  )
+  if with_answers:
+    _design_para(doc, "【答案】", bold=True)
+    _design_para(
+        doc,
+        "运用比喻，把阅读与思考带来的启发比作“那束光”，"
+        "形象写出想象对成长的意义；呼应本单元“想象力博物馆”主题，"
+        "富有感召力，收束全文。",
+    )
+    _design_para(doc, "【评分要点】3分。须指出比喻并分析内容与结构上的作用。")
+  else:
+    _design_blanks(doc, 3)
+  _design_para(doc, "")
+  _design_para(doc, "语言运用：")
+  _design_para(
+      doc,
       "1.本单元《女娲造人》中，女娲抟土造人、挥藤沾泥，"
       "把远古神话写得充满人情味。如果要书写你的梦，你会选择什么事物呢？"
-      "请依照下面的句子进行仿写。"
+      "请依照下面的句子进行仿写。",
   )
-  para("【示例】我的梦，是那片青翠的爬山虎，从不停下向上攀爬的脚步。")
-  para("我的梦，是　　　　　　　　　　　，　　　　　　　　　　　。")
-  para("")
-  para(
+  _design_para(doc, "【示例】我的梦，是那片青翠的爬山虎，从不停下向上攀爬的脚步。")
+  if with_answers:
+    _design_para(doc, "【参考答案】", bold=True)
+    _design_para(doc, "我的梦，是那棵倔强的小桃树，在风雨中仍执着地向着阳光生长。")
+    _design_para(doc, "我的梦，是那条蜿蜒的小溪流，从不停下奔向远方的脚步。")
+    _design_para(
+        doc,
+        "【评分要点】3分。句式为“我的梦，是……，……”；"
+        "所选事物与“梦/追求/成长”相关；前后句意连贯。",
+    )
+  else:
+    _design_para(doc, "我的梦，是　　　　　　　　　　　，　　　　　　　　　　　。")
+  _design_para(doc, "")
+  _design_para(
+      doc,
       "2.阅读下面对吴承恩的介绍材料，参照为袁珂写的这段推荐词示例，"
-      "为吴承恩写一段推荐词。"
+      "为吴承恩写一段推荐词。",
   )
-  para("材料：")
-  para(
+  _design_para(doc, "材料：")
+  _design_para(
+      doc,
       "①吴承恩生活于明代，自幼聪颖，博览群书，尤喜神怪小说。"
       "他历时十余年创作《西游记》，以唐僧取经故事为线索，"
-      "塑造了孙悟空、猪八戒、沙僧等鲜明形象。"
+      "塑造了孙悟空、猪八戒、沙僧等鲜明形象。",
   )
-  para(
+  _design_para(
+      doc,
       "②《西游记》写神魔斗法、降妖伏魔，想象瑰丽，情节跌宕。"
       "孙悟空七十二变、与二郎神斗法等场面，既展现自由奔放的想象，"
-      "又暗含“相生相克”的规则，寄托着对人性与社会的思考。"
+      "又暗含“相生相克”的规则，寄托着对人性与社会的思考。",
   )
-  para(
+  _design_para(
+      doc,
       "【示例】袁珂推荐词：他穷数十年之力搜集神话，"
       "写成《中国神话传说》，让盘古、女娲、夸父从远古走来。"
       "他用学术的严谨与文学的温度，告诉我们：神话的想象，"
-      "寄托着民族征服自然、追求美好的强烈愿望。他就是——中国神话研究大家袁珂！"
+      "寄托着民族征服自然、追求美好的强烈愿望。他就是——中国神话研究大家袁珂！",
   )
-  blanks(3)
-  para("3.某班围绕下面一首诗开展诗歌诵读活动。活动中有一些问题，请你参与解决。")
-  para("远远的街灯明了，/好像闪着无数的明星。/天上的明星现了，/好像点着无数的街灯。")
-  para(
+  if with_answers:
+    _design_para(doc, "【参考答案】", bold=True)
+    _design_para(
+        doc,
+        "吴承恩推荐词：他博览群书，倾心神魔，十余年磨一剑，"
+        "写下《西游记》这等人神妖共行的长篇奇书。孙悟空七十二变，"
+        "与二郎神斗法，想象瑰丽而妙趣横生；《西游记》写自由与规则，"
+        "写人情与世故，让人在奇幻中看见成长。他就是——一代神魔小说大家吴承恩！",
+    )
+    _design_para(
+        doc,
+        "【评分要点】5分。须含：人物经历或特点、代表作品、"
+        "作品特色、评价性结语及“他就是——×××”的格式。",
+    )
+  else:
+    _design_blanks(doc, 3)
+  _design_para(doc, "3.某班围绕下面一首诗开展诗歌诵读活动。活动中有一些问题，请你参与解决。")
+  _design_para(doc, "远远的街灯明了，/好像闪着无数的明星。/天上的明星现了，/好像点着无数的街灯。")
+  _design_para(
+      doc,
       "我想那缥缈的街市，/定然有美丽的街市陈列。/街市上陈列的一些物品，"
-      "/定然是世上没有的珍奇。"
+      "/定然是世上没有的珍奇。",
   )
-  para("——郭沫若《天上的街市》")
-  para(
+  _design_para(doc, "——郭沫若《天上的街市》")
+  _design_para(
+      doc,
       "李强朗诵后兴奋地说：“诗人由街灯想到明星，又由明星想到美丽的街市，"
-      "想象多么自由！”你认为诗中哪些词语最能体现“联想和想象”？请举出两个并简要说明。"
+      "想象多么自由！”你认为诗中哪些词语最能体现“联想和想象”？请举出两个并简要说明。",
   )
-  blanks(3)
-  para(
+  if with_answers:
+    _design_para(doc, "【参考答案】", bold=True)
+    _design_para(
+        doc,
+        "①“好像”：把街灯比作明星、明星比作街灯，由眼前实景展开联想，"
+        "体现由实入虚的想象过程。",
+    )
+    _design_para(
+        doc,
+        "②“定然”：由联想进一步拓展为对理想街市、珍奇物品的美好想象，"
+        "表达诗人对自由美好生活的向往。",
+    )
+    _design_para(doc, "（也可答“明星”“街市”“珍奇”等，言之有理即可。）")
+    _design_para(doc, "【评分要点】每词1.5分，说明1.5分，共6分。")
+  else:
+    _design_blanks(doc, 3)
+  _design_para(
+      doc,
       "朗诵会上，主持人说：“本单元我们还学习了神魔小说、神话、寓言等想象类作品。"
-      "请任选本单元一篇课文，说说作者是如何借助想象表达情感的。”"
+      "请任选本单元一篇课文，说说作者是如何借助想象表达情感的。”",
   )
-  blanks(3)
-  para("写作：")
-  para(
+  if with_answers:
+    _design_para(doc, "【参考答案】（任选一篇，示例）", bold=True)
+    _design_para(
+        doc,
+        "示例一（《女娲造人》）：作者发挥想象，把古籍中“女娲抟黄土作人”的记载"
+        "改写成散文，写女娲的孤独、造人的喜悦与辛劳，让神具有人的情感，"
+        "借神话表达对生命与母爱的赞美。",
+    )
+    _design_para(
+        doc,
+        "示例二（《小圣施威降大圣》）：作者以神魔斗法的奇幻想象写孙悟空与二郎神的"
+        "变化追逐，在紧张有趣的情节中表现人物的机敏、好胜与神通，"
+        "使读者在想象中感受自由与规则的碰撞。",
+    )
+    _design_para(
+        doc,
+        "示例三（《寓言四则》）：作者以简短夸张的想象故事，"
+        "把抽象道理形象化，在幽默讽刺中寄寓对生活的思考。",
+    )
+    _design_para(doc, "【评分要点】4分。须答出“想象手段”与“表达的情感/主题”。")
+  else:
+    _design_blanks(doc, 3)
+  _design_para(doc, "写作：")
+  _design_para(
+      doc,
       "有人说：“想象力是翅膀，真实是大地；飞得再高，也要落回地面。”"
       "校园文学社的“想象力博物馆”即将开幕，"
-      "每一件展品都要说清：想象从何处来，如何保持合理，又照见了怎样的真实。"
+      "每一件展品都要说清：想象从何处来，如何保持合理，又照见了怎样的真实。",
   )
-  para("请以《翅膀与大地》为题，写一篇作文。")
-  para("要求：")
-  para("①立意自定，文体自选(诗歌除外)；")
-  para("②说真话，抒真情，忌抄袭；")
-  para("③文中不要使用真实的地名、校名、人名；")
-  para("④书写工整，不少于600字。")
-  para("【学后反思】")
-  para(
+  _design_para(doc, "请以《翅膀与大地》为题，写一篇作文。")
+  _design_para(doc, "要求：")
+  _design_para(doc, "①立意自定，文体自选(诗歌除外)；")
+  _design_para(doc, "②说真话，抒真情，忌抄袭；")
+  _design_para(doc, "③文中不要使用真实的地名、校名、人名；")
+  _design_para(doc, "④书写工整，不少于600字。")
+  if with_answers:
+    _design_para(doc, "【写作指导】", bold=True)
+    _design_para(doc, "一、审题立意")
+    _design_para(
+        doc,
+        "“翅膀”喻指想象力、创造力、理想追求；“大地”喻指现实生活、"
+        "真实经验、理性判断。可写：一次阅读、观影或生活中的想象体验，"
+        "表达“想象要自由，也要扎根真实”的认识。",
+    )
+    _design_para(doc, "二、选材建议")
+    _design_para(doc, "①阅读《西游记》《女娲造人》后的想象与思考；")
+    _design_para(doc, "②参观展览、观看科幻电影后的感受；")
+    _design_para(doc, "③自己创作想象故事或参加“想象力博物馆”活动的经历。")
+    _design_para(doc, "三、结构建议")
+    _design_para(doc, "开头：引用或化用“翅膀与大地”的比喻，点题；")
+    _design_para(doc, "中间：记叙具体经历，写清“想象从哪来—如何合理—照见什么真实”；")
+    _design_para(doc, "结尾：回扣题目，升华对“想象与真实”的理解。")
+    _design_para(doc, "四、评分参考（满分40分）")
+    _design_para(doc, "立意内容15分，结构条理10分，语言表达10分，书写规范5分。")
+    _design_para(doc, "【例文片段】", bold=True)
+    _design_para(
+        doc,
+        "我常常觉得，阅读是一双翅膀。读《天上的街市》时，我的思绪随诗人飞上星空，"
+        "看见美丽的街市和珍奇的物品；读《小圣施威降大圣》时，我又随孙悟空七十二变，"
+        "在云端与二郎神斗法。可翅膀飞得再高，也要落回大地——"
+        "街市的美好，来自诗人对自由的向往；斗法的精彩，来自人情与规则的真实。",
+    )
+  _design_para(doc, "【学后反思】")
+  _design_para(
+      doc,
       "1、通过本单元的学习，你知道了“想象与真实”的关系吗？"
-      "神魔小说、神话、寓言在“想象”上有何不同？请各举一例说明。"
+      "神魔小说、神话、寓言在“想象”上有何不同？请各举一例说明。",
   )
-  blanks(3)
-  para(
+  if with_answers:
+    _design_para(doc, "【参考答案】", bold=True)
+    _design_para(
+        doc,
+        "“想象与真实”的关系：想象源于生活经验与情感，可以超越现实，"
+        "但最终要回到对人心、生活与真理的观照。",
+    )
+    _design_para(doc, "神魔小说（如《小圣施威降大圣》）：以斗法变化写想象，重在情节奇幻与“自由—规则”的碰撞。")
+    _design_para(doc, "神话（如《女娲造人》）：以创世故事写想象，重在寄托对生命、创造与母爱的礼赞。")
+    _design_para(doc, "寓言（如《穿井得一人》）：以简短夸张写想象，重在讽刺社会现象、揭示道理。")
+    _design_para(doc, "【评分要点】开放性作答，言之有理即可，供课堂交流使用。")
+  else:
+    _design_blanks(doc, 3)
+  _design_para(
+      doc,
       "2、学习了本主题之后，当生活中再次遇到网络谣言、群体压力或自我局限时，"
       "你将如何运用本单元所学的四条策展主题（自由与规则、真实与虚假、创造与生命、智慧与局限）？"
-      "请和你的同伴说一说。"
+      "请和你的同伴说一说。",
   )
-  blanks(3)
+  if with_answers:
+    _design_para(doc, "【参考答案】", bold=True)
+    _design_para(doc, "①自由与规则：表达观点时享有自由，但不传播未经核实的信息，遵守网络文明规则。")
+    _design_para(doc, "②真实与虚假：不盲从、不随声附和，敢于追问真相，像辨别“新装”一样辨别谣言。")
+    _design_para(doc, "③创造与生命：用阅读与思考滋养内心，在挫折中仍保持创造的热情与生命的活力。")
+    _design_para(doc, "④智慧与局限：承认自己的认知局限，遇事多求证、多反思，避免杞人忧天式的无谓焦虑。")
+    _design_para(doc, "【评分要点】开放性作答，能联系生活并对应四条主题即可。")
+  else:
+    _design_blanks(doc, 3)
   return doc
 
 
@@ -665,9 +893,13 @@ def build_homework(with_answers=False):
 
 
 def main():
-  design = build_homework_design()
+  design = build_homework_design(False)
   design.save(str(OUT / "七年级上册第六单元单元作业设计.docx"))
   print("✓ 七年级上册第六单元单元作业设计.docx")
+
+  design_ans = build_homework_design(True)
+  design_ans.save(str(OUT / "七年级上册第六单元单元作业设计（参考答案）.docx"))
+  print("✓ 七年级上册第六单元单元作业设计（参考答案）.docx")
 
   paper, tmp1 = build_homework(False)
   paper.save(str(OUT / "七年级上册第六单元单元作业（原卷版）.docx"))
