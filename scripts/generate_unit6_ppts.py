@@ -302,30 +302,68 @@ class ThemedDeck:
             set_para(p, PP_ALIGN.LEFT)
             set_run(p.add_run(), display, fs, False, self.t["text"])
 
-    def _kv_notes(self, slide, items, top=1.95):
-        """Knowledge notes: (keyword, explanation) pairs for note-taking."""
+    def _notebook_panel(self, slide, top, height, width=11.0):
+        """Distinct notebook-style panel for knowledge slides."""
+        left = Inches(CX - width / 2)
+        # cream paper
+        panel = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, Inches(top), Inches(width), Inches(height))
+        panel.fill.solid()
+        panel.fill.fore_color.rgb = rgb((255, 252, 235))
+        panel.line.color.rgb = rgb(self.t["border"])
+        panel.line.width = Pt(2)
+        # header strip
+        hdr = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, Inches(top), Inches(width), Inches(0.42))
+        hdr.fill.solid()
+        hdr.fill.fore_color.rgb = rgb(self.t["accent"])
+        hdr.line.fill.background()
+        hb = slide.shapes.add_textbox(left, Inches(top + 0.04), Inches(width), Inches(0.38))
+        hp = hb.text_frame.paragraphs[0]
+        set_para(hp, PP_ALIGN.CENTER)
+        set_run(hp.add_run(), "📝  课堂笔记  —  请摘抄要点", 18, True, (255, 255, 255))
+        # red margin line
+        margin = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(CX - width / 2 + 0.55), Inches(top + 0.42), Inches(0.03), Inches(height - 0.42))
+        margin.fill.solid()
+        margin.fill.fore_color.rgb = rgb((220, 80, 80))
+        margin.line.fill.background()
+        return panel
+
+    def _kv_notes(self, slide, items, top=1.55):
+        """Knowledge notes: (keyword, explanation) pairs — notebook layout."""
         n = len(items)
-        panel_h = min(5.2, 0.72 * n + 0.35)
-        self._panel(slide, top - 0.15, panel_h, width=10.8)
+        row_h = 0.88
+        panel_h = min(5.4, row_h * n + 0.55)
+        self._notebook_panel(slide, top - 0.1, panel_h)
+        content_top = top + 0.38
         for i, item in enumerate(items):
-            y = top + i * 0.72
+            y = content_top + i * row_h
             if isinstance(item, tuple):
                 key, val = item
             else:
                 key, val = "", item
+            # ruled line
+            rule = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.55), Inches(y + row_h - 0.12), Inches(10.5), Inches(0.015))
+            rule.fill.solid()
+            rule.fill.fore_color.rgb = rgb((210, 200, 175))
+            rule.line.fill.background()
             if key:
-                kb = slide.shapes.add_textbox(Inches(1.35), Inches(y), Inches(2.6), Inches(0.55))
+                # keyword pill
+                kw_w = max(1.4, len(key) * 0.32 + 0.3)
+                pill = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.75), Inches(y + 0.05), Inches(kw_w), Inches(0.38))
+                pill.fill.solid()
+                pill.fill.fore_color.rgb = rgb(self.t["accent2"])
+                pill.line.fill.background()
+                kb = slide.shapes.add_textbox(Inches(1.75), Inches(y + 0.07), Inches(kw_w), Inches(0.34))
                 kp = kb.text_frame.paragraphs[0]
-                set_para(kp, PP_ALIGN.RIGHT)
-                set_run(kp.add_run(), key, 22, True, self.t["accent"])
-                xb, xw = 4.1, 8.3
+                set_para(kp, PP_ALIGN.CENTER)
+                set_run(kp.add_run(), key, 18, True, self.t["text"])
+                xb = 1.75 + kw_w + 0.15
             else:
-                xb, xw = 1.35, 11.0
-            vb = slide.shapes.add_textbox(Inches(xb), Inches(y), Inches(xw), Inches(0.65))
+                xb = 1.75
+            vb = slide.shapes.add_textbox(Inches(xb), Inches(y + 0.05), Inches(12.0 - xb - 0.5), Inches(0.72))
             vp = vb.text_frame.paragraphs[0]
             vp.word_wrap = True
             set_para(vp, PP_ALIGN.LEFT)
-            set_run(vp.add_run(), val, 22, False, self.t["text"])
+            set_run(vp.add_run(), val, 21, False, self.t["text"])
 
     def _question(self, slide, q, hint=None):
         self._tag(slide, "想一想", 1.1)
@@ -341,33 +379,50 @@ class ThemedDeck:
         slide = self._blank()
         self._base(slide)
         self._frame(slide, double=True)
-        # center big title
-        box = slide.shapes.add_textbox(Inches(1.5), Inches(2.2), Inches(10.3), Inches(1.8))
+        box = slide.shapes.add_textbox(Inches(1.5), Inches(2.0), Inches(10.3), Inches(2.0))
         p = box.text_frame.paragraphs[0]
         set_para(p, PP_ALIGN.CENTER)
         set_run(p.add_run(), main, 52, True, self.t["accent"])
         p2 = box.text_frame.add_paragraph()
         set_para(p2, PP_ALIGN.CENTER)
         set_run(p2.add_run(), sub, 26, False, self.t["text"])
-        # bottom decorative line
+        p3 = box.text_frame.add_paragraph()
+        set_para(p3, PP_ALIGN.CENTER)
+        set_run(p3.add_run(), "含课堂笔记 · 2026版", 20, True, self.t["accent2"])
         self._divider(slide, 5.5)
 
     def content(self, title, tag, items, compact=False):
         slide = self._blank()
         self._base(slide)
+        # activity slides: green tag to distinguish from notebook pages
+        act = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.55), Inches(0.42), Inches(2.2), Inches(0.42))
+        act.fill.solid()
+        act.fill.fore_color.rgb = rgb((60, 150, 100))
+        act.line.fill.background()
+        ab = slide.shapes.add_textbox(Inches(0.55), Inches(0.44), Inches(2.2), Inches(0.38))
+        ap = ab.text_frame.paragraphs[0]
+        set_para(ap, PP_ALIGN.CENTER)
+        set_run(ap.add_run(), "课堂活动", 16, True, (255, 255, 255))
         self._tag(slide, tag, 0.55)
         self._title(slide, title, 1.05, 36)
         self._divider(slide, 1.75)
         self._bullets(slide, items, 2.0, compact=compact)
 
-    def knowledge(self, title, items, tag="记笔记"):
-        """Substantive knowledge slide for student note-taking."""
+    def knowledge(self, title, items, tag="知识要点"):
+        """Substantive knowledge slide — distinct notebook visual."""
         slide = self._blank()
         self._base(slide)
-        self._tag(slide, tag, 0.55)
-        self._title(slide, title, 1.05, 34)
-        self._divider(slide, 1.75)
-        self._kv_notes(slide, items, 1.95)
+        # section label (left-aligned, different from activity slides)
+        lbl = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.55), Inches(0.42), Inches(2.2), Inches(0.42))
+        lbl.fill.solid()
+        lbl.fill.fore_color.rgb = rgb(self.t["accent"])
+        lbl.line.fill.background()
+        lb = slide.shapes.add_textbox(Inches(0.55), Inches(0.44), Inches(2.2), Inches(0.38))
+        lp = lb.text_frame.paragraphs[0]
+        set_para(lp, PP_ALIGN.CENTER)
+        set_run(lp.add_run(), tag, 16, True, (255, 255, 255))
+        self._title(slide, title, 0.42, 34)
+        self._kv_notes(slide, items, 1.35)
 
     def think(self, q, hint=None):
         slide = self._blank()
@@ -644,10 +699,21 @@ def build_final():
 
 
 def main():
+    import shutil
+    copies = {
+        "第1课时 单元导学.pptx": "unit6-lesson1-intro.pptx",
+        "第21课 小圣施威降大圣.pptx": "unit6-lesson21-wukong.pptx",
+        "第22课 皇帝的新装.pptx": "unit6-lesson22-emperor.pptx",
+        "第23课 女娲造人.pptx": "unit6-lesson23-nuwa.pptx",
+        "第24课 寓言四则.pptx": "unit6-lesson24-fables.pptx",
+        "第10-12课时 单元成果展示.pptx": "unit6-lesson10-12-final.pptx",
+    }
     for fn in [build_unit_intro, build_lesson21, build_lesson22,
                build_lesson23, build_lesson24, build_final]:
         fn()
-    print("\n全部生成完成！")
+    for cn, en in copies.items():
+        shutil.copy2(OUT_DIR / cn, Path("/workspace") / en)
+    print("\n全部生成完成！英文副本已保存至 /workspace/")
 
 
 if __name__ == "__main__":
