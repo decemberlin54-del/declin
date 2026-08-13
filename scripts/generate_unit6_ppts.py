@@ -1,796 +1,606 @@
 #!/usr/bin/env python3
-"""Generate 5 distinct-style Unit 6 PPTs (4 lessons + showcase)."""
+"""Generate Unit 6 lesson PPTs — bordered, centered, distinct styles per lesson."""
 
-import shutil
+import math
+import os
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
-from pptx.enum.text import PP_ALIGN
+from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
 
-OUT = Path("/workspace/第六单元PPT")
-IMG = OUT / "images"
-W, H = Inches(13.333), Inches(7.5)
-FL, FT, FW, FH = Inches(0.32), Inches(0.30), Inches(12.68), Inches(6.89)
-CX = 6.667
+BASE = Path("/workspace/第六单元PPT")
+IMG_DIR = BASE / "images"
+OUT_DIR = BASE
+
+SLIDE_W = Inches(13.333)
+SLIDE_H = Inches(7.5)
+FRAME_L, FRAME_T = Inches(0.32), Inches(0.30)
+FRAME_W, FRAME_H = Inches(12.68), Inches(6.89)
+CX = 6.667  # slide center x in inches
 
 
-def rgb(c):
-    return RGBColor(*c)
+def rgb(t):
+    return RGBColor(*t)
 
 
-def run(r, t, sz=28, bold=False, color=(50, 50, 50)):
-    r.text = t
-    r.font.size = Pt(sz)
-    r.font.bold = bold
-    r.font.name = "Microsoft YaHei"
-    r.font.color.rgb = rgb(color)
+def set_run(run, text, size=28, bold=False, color=(60, 60, 60)):
+    run.text = text
+    run.font.size = Pt(size)
+    run.font.bold = bold
+    run.font.name = "Microsoft YaHei"
+    run.font.color.rgb = rgb(color)
 
 
-def para(p, align=PP_ALIGN.CENTER, after=8):
+def set_para(p, align=PP_ALIGN.CENTER):
     p.alignment = align
-    p.space_after = Pt(after)
+    p.space_after = Pt(10)
 
 
-def new_prs():
-    p = Presentation()
-    p.slide_width = W
-    p.slide_height = H
-    return p
+# ── Theme definitions ──────────────────────────────────────────────
+THEMES = {
+    "unit": {
+        "name": "博物馆展板风",
+        "bg": (235, 240, 248),
+        "bg2": (200, 215, 235),
+        "border": (100, 130, 170),
+        "accent": (70, 120, 180),
+        "accent2": (160, 190, 220),
+        "panel": (248, 250, 255),
+        "text": (50, 60, 80),
+        "corner": "museum",
+    },
+    "wukong": {
+        "name": "仙侠斗法风",
+        "bg": (255, 240, 228),
+        "bg2": (255, 200, 160),
+        "border": (200, 90, 50),
+        "accent": (220, 80, 40),
+        "accent2": (255, 180, 100),
+        "panel": (255, 248, 240),
+        "text": (80, 40, 20),
+        "corner": "cloud",
+    },
+    "emperor": {
+        "name": "童话宫廷风",
+        "bg": (245, 238, 252),
+        "bg2": (210, 190, 230),
+        "border": (130, 90, 160),
+        "accent": (120, 70, 150),
+        "accent2": (200, 170, 220),
+        "panel": (252, 248, 255),
+        "text": (60, 40, 80),
+        "corner": "crown",
+    },
+    "nuwa": {
+        "name": "神话创世风",
+        "bg": (235, 245, 232),
+        "bg2": (170, 200, 165),
+        "border": (90, 140, 90),
+        "accent": (70, 130, 80),
+        "accent2": (160, 200, 150),
+        "panel": (248, 252, 245),
+        "text": (40, 70, 45),
+        "corner": "leaf",
+    },
+    "fable": {
+        "name": "故事书卷风",
+        "bg": (255, 248, 228),
+        "bg2": (240, 210, 150),
+        "border": (180, 140, 60),
+        "accent": (200, 150, 40),
+        "accent2": (240, 200, 100),
+        "panel": (255, 252, 240),
+        "text": (90, 70, 30),
+        "corner": "scroll",
+    },
+    "final": {
+        "name": "多巴胺展览风",
+        "bg": (255, 240, 250),
+        "bg2": (200, 230, 255),
+        "border": (180, 100, 180),
+        "accent": (230, 80, 150),
+        "accent2": (100, 200, 220),
+        "panel": (255, 250, 255),
+        "text": (70, 50, 90),
+        "corner": "festive",
+    },
+}
 
 
-def blank(prs):
-    return prs.slides.add_slide(prs.slide_layouts[6])
+def make_corner(kind, colors, size=(400, 400)):
+    """Generate unique corner decoration per theme."""
+    img = Image.new("RGBA", size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    c1, c2, c3 = colors["accent"], colors["accent2"], colors["border"]
+    w, h = size
+
+    if kind == "museum":
+        for i in range(5):
+            d.rectangle([10 + i * 8, 10 + i * 8, w - 30, h - 30], outline=(*c1, 180 - i * 30), width=2)
+        d.rectangle([40, 40, 120, 90], fill=(*c2, 120))
+        d.text((50, 50), "展", fill=(*c1, 200))
+
+    elif kind == "cloud":
+        for cx, cy, r in [(120, 80, 50), (200, 60, 40), (280, 90, 45)]:
+            d.ellipse([cx - r, cy - r // 2, cx + r, cy + r // 2], fill=(*c2, 150))
+        d.arc([20, 20, 200, 200], 0, 90, fill=(*c1, 200), width=4)
+
+    elif kind == "crown":
+        pts = [(60, 200), (100, 80), (140, 160), (180, 60), (220, 160), (260, 80), (300, 200)]
+        d.polygon(pts, fill=(*c1, 160), outline=(*c3, 200))
+        for x in [100, 180, 260]:
+            d.ellipse([x - 12, 68, x + 12, 92], fill=(*c2, 200))
+
+    elif kind == "leaf":
+        d.pieslice([50, 30, 250, 280], 200, 340, fill=(*c1, 140))
+        d.pieslice([100, 80, 300, 330], 160, 300, fill=(*c2, 120))
+        d.line([(30, 350), (200, 200)], fill=(*c3, 180), width=3)
+
+    elif kind == "scroll":
+        d.rectangle([60, 80, 340, 280], fill=(*c2, 100), outline=(*c1, 180), width=3)
+        d.ellipse([40, 120, 100, 240], fill=(*c1, 150))
+        d.ellipse([300, 120, 360, 240], fill=(*c1, 150))
+        for y in range(110, 260, 30):
+            d.line([(110, y), (290, y)], fill=(*c3, 80), width=1)
+
+    elif kind == "festive":
+        fest = [(255, 100, 130), (100, 200, 230), (255, 200, 80), (180, 130, 230), (100, 220, 160)]
+        for i, col in enumerate(fest):
+            x = 50 + i * 55
+            d.polygon([(x, 40), (x + 20, 100), (x + 40, 40)], fill=(*col, 180))
+            d.ellipse([x + 10, 100, x + 30, 120], fill=(*col, 200))
+
+    return img
 
 
-def save(prs, name):
-    OUT.mkdir(parents=True, exist_ok=True)
-    prs.save(str(OUT / name))
-    print(f"✓ {name} ({len(prs.slides)} slides)")
-
-
-def grad_bg(path, c1, c2):
-    IMG.mkdir(parents=True, exist_ok=True)
-    if not path.exists():
-        im = Image.new("RGB", (1920, 1080), c1)
-        d = ImageDraw.Draw(im)
-        for y in range(1080):
-            t = y / 1080
-            c = tuple(int(c1[i] * (1 - t) + c2[i] * t) for i in range(3))
-            d.line([(0, y), (1920, y)], fill=c)
-        im.save(path)
+def make_bg(theme_key, filename):
+    t = THEMES[theme_key]
+    path = IMG_DIR / filename
+    IMG_DIR.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        return path
+    img = Image.new("RGB", (1920, 1080), t["bg"])
+    d = ImageDraw.Draw(img)
+    for i in range(0, 1080, 3):
+        ratio = i / 1080
+        c = tuple(int(t["bg"][j] * (1 - ratio * 0.3) + t["bg2"][j] * ratio * 0.3) for j in range(3))
+        d.line([(0, i), (1920, i)], fill=c)
+    # subtle pattern
+    for x in range(0, 1920, 80):
+        for y in range(0, 1080, 80):
+            d.ellipse([x, y, x + 3, y + 3], fill=(*t["accent2"],))
+    img.save(path)
     return path
 
 
-# ═══════════════════════════════════════════════════════════
-# STYLE A — 论语风：左文右图、大标题、米色底（第21课）
-# ═══════════════════════════════════════════════════════════
-class LunyuStyle:
-    BG1, BG2 = (248, 242, 228), (235, 220, 195)
-    INK, ACCENT, GOLD = (60, 45, 30), (140, 60, 40), (180, 130, 60)
+def save_corner(theme_key, pos):
+    t = THEMES[theme_key]
+    path = IMG_DIR / f"corner_{theme_key}_{pos}.png"
+    if not path.exists():
+        img = make_corner(t["corner"], t)
+        if pos == "tr":
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+        if pos == "bl":
+            img = img.transpose(Image.FLIP_TOP_BOTTOM)
+        if pos == "br":
+            img = img.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.FLIP_TOP_BOTTOM)
+        img.save(path)
+    return path
 
-    def __init__(self):
-        self.bg = grad_bg(IMG / "bg_lunyu.png", self.BG1, self.BG2)
 
-    def base(self, slide):
-        slide.shapes.add_picture(str(self.bg), 0, 0, W, H)
-        # top ink bar
-        bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, W, Inches(0.18))
-        bar.fill.solid()
-        bar.fill.fore_color.rgb = rgb(self.INK)
-        bar.line.fill.background()
+class ThemedDeck:
+    def __init__(self, theme_key):
+        self.key = theme_key
+        self.t = THEMES[theme_key]
+        self.prs = Presentation()
+        self.prs.slide_width = SLIDE_W
+        self.prs.slide_height = SLIDE_H
+        self.bg = make_bg(theme_key, f"bg_{theme_key}.png")
+        for pos in ("tl", "tr"):
+            save_corner(theme_key, pos)
 
-    def cover(self, prs, title, sub, extra=""):
-        s = blank(prs)
-        self.base(s)
-        # vertical accent strip right
-        strip = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(10.5), 0, Inches(2.8), H)
-        strip.fill.solid()
-        strip.fill.fore_color.rgb = rgb(self.ACCENT)
-        strip.line.fill.background()
-        # big title left
-        box = s.shapes.add_textbox(Inches(1.2), Inches(2.0), Inches(8.5), Inches(2.5))
-        p = box.text_frame.paragraphs[0]
-        para(p, PP_ALIGN.LEFT)
-        run(p.add_run(), title, 56, True, self.INK)
-        p2 = box.text_frame.add_paragraph()
-        para(p2, PP_ALIGN.LEFT, 14)
-        run(p2.add_run(), sub, 28, False, self.ACCENT)
-        if extra:
-            p3 = box.text_frame.add_paragraph()
-            para(p3, PP_ALIGN.LEFT, 14)
-            run(p3.add_run(), extra, 22, False, self.GOLD)
-        # decorative circle
-        c = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(11.0), Inches(2.5), Inches(1.8), Inches(1.8))
-        c.fill.solid()
-        c.fill.fore_color.rgb = rgb(self.GOLD)
-        c.fill.transparency = 0.3
-        c.line.color.rgb = rgb(self.INK)
+    def _blank(self):
+        return self.prs.slides.add_slide(self.prs.slide_layouts[6])
 
-    def knowledge(self, prs, heading, name, items):
-        """Like 论语 '孔丘' biography slide: name + content box."""
-        s = blank(prs)
-        self.base(s)
-        # name block
-        nb = s.shapes.add_textbox(Inches(1.5), Inches(0.7), Inches(5), Inches(0.8))
-        np = nb.text_frame.paragraphs[0]
-        para(np, PP_ALIGN.LEFT)
-        run(np.add_run(), name, 44, True, self.INK)
-        # heading underline
-        ul = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.5), Inches(1.45), Inches(4), Inches(0.04))
-        ul.fill.solid()
-        ul.fill.fore_color.rgb = rgb(self.ACCENT)
-        ul.line.fill.background()
-        hb = s.shapes.add_textbox(Inches(1.5), Inches(1.55), Inches(6), Inches(0.5))
-        hp = hb.text_frame.paragraphs[0]
-        para(hp, PP_ALIGN.LEFT)
-        run(hp.add_run(), heading, 24, False, self.ACCENT)
-        # content panel left
-        panel = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.3), Inches(2.2), Inches(7.8), Inches(4.5))
+    def _base(self, slide):
+        slide.shapes.add_picture(str(self.bg), 0, 0, SLIDE_W, SLIDE_H)
+        self._frame(slide)
+        for pos, l, t in [("tl", -0.05, -0.05), ("tr", 10.8, -0.05)]:
+            p = IMG_DIR / f"corner_{self.key}_{pos}.png"
+            if p.exists():
+                slide.shapes.add_picture(str(p), Inches(l), Inches(t), Inches(2.2), Inches(2.2))
+
+    def _frame(self, slide, double=False):
+        for i, (lw, col, inset) in enumerate([
+            (Pt(2.5), self.t["border"], 0),
+            (Pt(1), self.t["accent2"], 0.06 if double else None),
+        ]):
+            if inset is None and i == 1:
+                continue
+            l = FRAME_L + Inches(inset or 0)
+            t = FRAME_T + Inches(inset or 0)
+            w = FRAME_W - Inches((inset or 0) * 2)
+            h = FRAME_H - Inches((inset or 0) * 2)
+            rect = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, l, t, w, h)
+            rect.fill.background()
+            rect.line.color.rgb = rgb(col)
+            rect.line.width = lw
+
+    def _panel(self, slide, top, height, width=10.5):
+        left = Inches(CX - width / 2)
+        panel = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, Inches(top), Inches(width), Inches(height))
         panel.fill.solid()
-        panel.fill.fore_color.rgb = rgb((255, 252, 245))
-        panel.line.color.rgb = rgb(self.GOLD)
+        panel.fill.fore_color.rgb = rgb(self.t["panel"])
+        panel.fill.transparency = 0.15
+        panel.line.color.rgb = rgb(self.t["accent2"])
         panel.line.width = Pt(1.5)
-        y = 2.4
-        for key, val in items:
-            if key:
-                kb = s.shapes.add_textbox(Inches(1.6), Inches(y), Inches(2.2), Inches(0.45))
-                kp = kb.text_frame.paragraphs[0]
-                para(kp, PP_ALIGN.LEFT)
-                run(kp.add_run(), f"【{key}】", 22, True, self.ACCENT)
-                vb = s.shapes.add_textbox(Inches(3.8), Inches(y), Inches(5.0), Inches(0.7))
-            else:
-                vb = s.shapes.add_textbox(Inches(1.6), Inches(y), Inches(7.2), Inches(0.7))
-            vp = vb.text_frame.paragraphs[0]
-            vp.word_wrap = True
-            para(vp, PP_ALIGN.LEFT)
-            run(vp.add_run(), val, 22, False, self.INK)
-            y += 0.85 if len(val) > 30 else 0.65
-        # right decorative panel
-        rp = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(9.5), Inches(2.2), Inches(3.2), Inches(4.5))
-        rp.fill.solid()
-        rp.fill.fore_color.rgb = rgb(self.ACCENT)
-        rp.fill.transparency = 0.15
-        rp.line.color.rgb = rgb(self.ACCENT)
-        tb = s.shapes.add_textbox(Inches(9.7), Inches(3.5), Inches(2.8), Inches(2))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.CENTER)
-        run(tp.add_run(), "笔\n记", 48, True, self.ACCENT)
+        return panel
 
-    def twocol(self, prs, title, left_title, left_items, right_title, right_items):
-        s = blank(prs)
-        self.base(s)
-        tb = s.shapes.add_textbox(Inches(1.5), Inches(0.55), Inches(10), Inches(0.7))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.CENTER)
-        run(tp.add_run(), title, 36, True, self.INK)
-        for xt, tt, items in [(0.8, left_title, left_items), (6.8, right_title, right_items)]:
-            pnl = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(xt), Inches(1.5), Inches(5.8), Inches(5.2))
-            pnl.fill.solid()
-            pnl.fill.fore_color.rgb = rgb((255, 252, 245))
-            pnl.line.color.rgb = rgb(self.GOLD)
-            hb = s.shapes.add_textbox(Inches(xt + 0.2), Inches(1.65), Inches(5.4), Inches(0.5))
-            hp = hb.text_frame.paragraphs[0]
-            para(hp, PP_ALIGN.CENTER)
-            run(hp.add_run(), tt, 28, True, self.ACCENT)
-            y = 2.3
-            for k, v in items:
-                lb = s.shapes.add_textbox(Inches(xt + 0.3), Inches(y), Inches(5.2), Inches(0.9))
-                lp = lb.text_frame.paragraphs[0]
-                lp.word_wrap = True
-                para(lp, PP_ALIGN.LEFT)
-                if k:
-                    run(lp.add_run(), f"{k}：", 20, True, self.ACCENT)
-                    run(lp.add_run(), v, 20, False, self.INK)
-                else:
-                    run(lp.add_run(), v, 20, False, self.INK)
-                y += 0.95
+    def _title(self, slide, text, top=0.55, size=40):
+        box = slide.shapes.add_textbox(Inches(1.5), Inches(top), Inches(10.3), Inches(0.9))
+        tf = box.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        set_para(p, PP_ALIGN.CENTER)
+        set_run(p.add_run(), text, size, True, self.t["accent"])
 
-    def activity(self, prs, title, items):
-        s = blank(prs)
-        self.base(s)
-        tb = s.shapes.add_textbox(Inches(1.5), Inches(0.6), Inches(10), Inches(0.7))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.LEFT)
-        run(tp.add_run(), f"▶ {title}", 32, True, self.ACCENT)
-        y = 1.6
-        for i, item in enumerate(items, 1):
-            circ = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(1.5), Inches(y), Inches(0.4), Inches(0.4))
-            circ.fill.solid()
-            circ.fill.fore_color.rgb = rgb(self.ACCENT)
-            circ.line.fill.background()
-            nb = s.shapes.add_textbox(Inches(1.5), Inches(y + 0.02), Inches(0.4), Inches(0.38))
-            np = nb.text_frame.paragraphs[0]
-            para(np, PP_ALIGN.CENTER)
-            run(np.add_run(), str(i), 14, True, (255, 255, 255))
-            bb = s.shapes.add_textbox(Inches(2.1), Inches(y - 0.02), Inches(10), Inches(0.55))
-            bp = bb.text_frame.paragraphs[0]
-            para(bp, PP_ALIGN.LEFT)
-            run(bp.add_run(), item, 24, False, self.INK)
-            y += 0.75
-
-
-# ═══════════════════════════════════════════════════════════
-# STYLE B — 济南冬天风：顶栏标题 + 左侧面板（第22课）
-# ═══════════════════════════════════════════════════════════
-class JinanStyle:
-    BG = (240, 248, 255)
-    BLUE, DARK, LIGHT = (50, 100, 180), (30, 50, 90), (180, 210, 240)
-
-    def __init__(self):
-        self.bg = grad_bg(IMG / "bg_jinan.png", (245, 250, 255), (210, 230, 250))
-
-    def base(self, slide):
-        slide.shapes.add_picture(str(self.bg), 0, 0, W, H)
-
-    def cover(self, prs, title, author, sub=""):
-        s = blank(prs)
-        self.base(s)
-        box = s.shapes.add_textbox(Inches(2.5), Inches(2.3), Inches(8.3), Inches(1.2))
+    def _subtitle(self, slide, text, top=1.35, size=24):
+        box = slide.shapes.add_textbox(Inches(2), Inches(top), Inches(9.3), Inches(0.6))
         p = box.text_frame.paragraphs[0]
-        para(p, PP_ALIGN.CENTER)
-        run(p.add_run(), title, 52, True, self.DARK)
-        line = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(3.5), Inches(3.5), Inches(6.3), Inches(0.04))
-        line.fill.solid()
-        line.fill.fore_color.rgb = rgb(self.BLUE)
-        line.line.fill.background()
-        ab = s.shapes.add_textbox(Inches(8.5), Inches(3.65), Inches(2), Inches(0.5))
-        ap = ab.text_frame.paragraphs[0]
-        para(ap, PP_ALIGN.RIGHT)
-        run(ap.add_run(), author, 28, False, self.BLUE)
-        if sub:
-            sb = s.shapes.add_textbox(Inches(2.5), Inches(4.3), Inches(8.3), Inches(0.6))
-            sp = sb.text_frame.paragraphs[0]
-            para(sp, PP_ALIGN.CENTER)
-            run(sp.add_run(), sub, 22, False, self.DARK)
-        # decorative dots
-        for dx, dy, ds in [(2.8, 2.5, 0.15), (2.6, 2.9, 0.1), (3.0, 3.1, 0.2)]:
-            d = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(dx), Inches(dy), Inches(ds), Inches(ds))
-            d.fill.solid()
-            d.fill.fore_color.rgb = rgb(self.LIGHT)
-            d.line.fill.background()
+        set_para(p, PP_ALIGN.CENTER)
+        set_run(p.add_run(), text, size, False, self.t["text"])
 
-    def section(self, prs, header, title, items, logic=False):
-        s = blank(prs)
-        self.base(s)
-        # top header strip
-        hdr = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.5), Inches(0.35), Inches(12.3), Inches(0.55))
-        hdr.fill.solid()
-        hdr.fill.fore_color.rgb = rgb(self.BLUE)
-        hdr.line.fill.background()
-        hb = s.shapes.add_textbox(Inches(0.7), Inches(0.38), Inches(12), Inches(0.5))
-        hp = hb.text_frame.paragraphs[0]
-        para(hp, PP_ALIGN.LEFT)
-        run(hp.add_run(), header, 22, True, (255, 255, 255))
-        # title with dots
-        tb = s.shapes.add_textbox(Inches(1.5), Inches(1.1), Inches(10), Inches(0.7))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.CENTER)
-        run(tp.add_run(), title, 36, True, self.DARK)
-        # left panel
-        pw = 7.5 if logic else 11.5
-        px = 0.8 if logic else 0.9
-        panel = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(px), Inches(2.0), Inches(pw), Inches(4.6))
-        panel.fill.solid()
-        panel.fill.fore_color.rgb = rgb((255, 255, 255))
-        panel.line.color.rgb = rgb(self.LIGHT)
-        panel.line.width = Pt(2)
-        y = 2.2
-        for item in items:
+    def _tag(self, slide, text, top=1.15):
+        w = max(2.5, len(text) * 0.28)
+        left = Inches(CX - w / 2)
+        tag = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, Inches(top), Inches(w), Inches(0.45))
+        tag.fill.solid()
+        tag.fill.fore_color.rgb = rgb(self.t["accent2"])
+        tag.line.fill.background()
+        box = slide.shapes.add_textbox(left, Inches(top + 0.02), Inches(w), Inches(0.42))
+        p = box.text_frame.paragraphs[0]
+        set_para(p, PP_ALIGN.CENTER)
+        set_run(p.add_run(), text, 18, True, self.t["text"])
+
+    def _divider(self, slide, top):
+        line = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(3.5), Inches(top), Inches(6.3), Inches(0.03))
+        line.fill.solid()
+        line.fill.fore_color.rgb = rgb(self.t["accent2"])
+        line.line.fill.background()
+
+    def _bullets(self, slide, items, top=2.0, centered=True, compact=False):
+        """items: list of str or (label, str)"""
+        n = len(items)
+        row_h = 0.52 if compact else 0.62
+        fs = 22 if compact else 24
+        panel_h = min(5.0, row_h * n + 0.45)
+        self._panel(slide, top - 0.2, panel_h)
+        cx = CX - 3.8 if centered else 1.8
+        for i, item in enumerate(items):
+            y = top + i * row_h
+            if isinstance(item, tuple):
+                label, text = item
+                display = f"{label}：{text}"
+                badge = str(i + 1)
+            else:
+                display = item
+                badge = str(i + 1)
+            circ = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(cx), Inches(y), Inches(0.38), Inches(0.38))
+            circ.fill.solid()
+            circ.fill.fore_color.rgb = rgb(self.t["accent"])
+            circ.line.fill.background()
+            nb = slide.shapes.add_textbox(Inches(cx), Inches(y + 0.02), Inches(0.38), Inches(0.36))
+            np = nb.text_frame.paragraphs[0]
+            set_para(np, PP_ALIGN.CENTER)
+            set_run(np.add_run(), badge, 14, True, (255, 255, 255))
+            box = slide.shapes.add_textbox(Inches(cx + 0.5), Inches(y - 0.02), Inches(8.6), Inches(0.5))
+            p = box.text_frame.paragraphs[0]
+            set_para(p, PP_ALIGN.LEFT)
+            set_run(p.add_run(), display, fs, False, self.t["text"])
+
+    def _clean_notes(self, slide, items, top=2.05):
+        """Clean centered notes: keyword | content, no overlapping elements."""
+        n = len(items)
+        row_h = 0.82
+        panel_h = min(5.2, row_h * n + 0.35)
+        self._panel(slide, top - 0.12, panel_h, width=10.6)
+        for i, item in enumerate(items):
+            y = top + i * row_h
             if isinstance(item, tuple):
                 key, val = item
-                bb = s.shapes.add_textbox(Inches(px + 0.3), Inches(y), Inches(pw - 0.5), Inches(0.8))
-                bp = bb.text_frame.paragraphs[0]
-                bp.word_wrap = True
-                para(bp, PP_ALIGN.LEFT)
-                run(bp.add_run(), f"【{key}】", 24, True, self.BLUE)
-                run(bp.add_run(), val, 24, False, self.DARK)
-            else:
-                bb = s.shapes.add_textbox(Inches(px + 0.3), Inches(y), Inches(pw - 0.5), Inches(0.7))
-                bp = bb.text_frame.paragraphs[0]
-                bp.word_wrap = True
-                para(bp, PP_ALIGN.LEFT)
-                run(bp.add_run(), item, 24 if not logic else 28, False, self.DARK)
-            y += 0.85 if logic else 0.7
-        if logic:
-            # right keyword column
-            rb = s.shapes.add_textbox(Inches(8.8), Inches(2.2), Inches(3.8), Inches(4.2))
-            rp = rb.text_frame.paragraphs[0]
-            para(rp, PP_ALIGN.CENTER)
-            run(rp.add_run(), "全\n文\n主\n线", 32, True, self.BLUE)
-
-    def activity(self, prs, title, items):
-        self.section(prs, "课堂活动", title, items)
-
-
-# ═══════════════════════════════════════════════════════════
-# STYLE C — 古诗四首风：边框 + 居中 + 编号圆（第23课）
-# ═══════════════════════════════════════════════════════════
-class GushiStyle:
-    GREEN, DARK, LIGHT = (80, 130, 90), (40, 70, 50), (180, 210, 180)
-
-    def __init__(self):
-        self.bg = grad_bg(IMG / "bg_gushi.png", (235, 245, 232), (200, 225, 200))
-
-    def frame(self, slide):
-        slide.shapes.add_picture(str(self.bg), 0, 0, W, H)
-        rect = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, FL, FT, FW, FH)
-        rect.fill.background()
-        rect.line.color.rgb = rgb(self.GREEN)
-        rect.line.width = Pt(2.5)
-
-    def cover(self, prs, chars, sub):
-        """Split-character cover like 古诗四首."""
-        s = blank(prs)
-        self.frame(s)
-        cx = 5.5
-        for i, ch in enumerate(chars):
-            box = s.shapes.add_textbox(Inches(cx + i * 1.3), Inches(1.8 + i * 0.3), Inches(1.5), Inches(1.5))
-            p = box.text_frame.paragraphs[0]
-            para(p, PP_ALIGN.CENTER)
-            run(p.add_run(), ch, 72, True, self.GREEN)
-        sb = s.shapes.add_textbox(Inches(3.5), Inches(5.0), Inches(6.3), Inches(0.6))
-        sp = sb.text_frame.paragraphs[0]
-        para(sp, PP_ALIGN.CENTER)
-        run(sp.add_run(), sub, 26, False, self.DARK)
-
-    def titled(self, prs, title, items, numbered=True):
-        s = blank(prs)
-        self.frame(s)
-        tb = s.shapes.add_textbox(Inches(3.5), Inches(0.7), Inches(6.3), Inches(0.8))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.CENTER)
-        run(tp.add_run(), title, 40, True, self.GREEN)
-        y = 1.8
-        for i, item in enumerate(items, 1):
-            if numbered:
-                circ = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(1.5), Inches(y), Inches(0.45), Inches(0.45))
-                circ.fill.solid()
-                circ.fill.fore_color.rgb = rgb(self.GREEN)
-                circ.line.fill.background()
-                nb = s.shapes.add_textbox(Inches(1.5), Inches(y + 0.03), Inches(0.45), Inches(0.42))
-                np = nb.text_frame.paragraphs[0]
-                para(np, PP_ALIGN.CENTER)
-                run(np.add_run(), str(i), 16, True, (255, 255, 255))
-                xb = 2.2
-            else:
-                xb = 1.5
-            if isinstance(item, tuple):
-                key, val = item[0], item[1]
-                text = f"{key}：{val}"
             else:
                 key, val = "", item
-                text = item
-            bb = s.shapes.add_textbox(Inches(xb), Inches(y - 0.02), Inches(10), Inches(0.65))
-            bp = bb.text_frame.paragraphs[0]
-            bp.word_wrap = True
-            para(bp, PP_ALIGN.LEFT)
-            if isinstance(item, tuple):
-                run(bp.add_run(), f"{item[0]}：", 24, True, self.GREEN)
-                run(bp.add_run(), item[1], 24, False, self.DARK)
+            if key:
+                kb = slide.shapes.add_textbox(Inches(1.6), Inches(y), Inches(2.3), Inches(0.55))
+                kp = kb.text_frame.paragraphs[0]
+                set_para(kp, PP_ALIGN.RIGHT)
+                set_run(kp.add_run(), key, 22, True, self.t["accent"])
+                vb = slide.shapes.add_textbox(Inches(4.1), Inches(y), Inches(7.8), Inches(0.75))
             else:
-                run(bp.add_run(), item, 24, False, self.DARK)
-            y += 0.72
-
-    def compare_table(self, prs, title, rows):
-        s = blank(prs)
-        self.frame(s)
-        tb = s.shapes.add_textbox(Inches(2), Inches(0.6), Inches(9.3), Inches(0.7))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.CENTER)
-        run(tp.add_run(), title, 36, True, self.GREEN)
-        cols = [1.2, 4.5, 8.5]
-        headers = ["项目", "《风俗通》", "课文"]
-        y0 = 1.6
-        for j, h in enumerate(headers):
-            hb = s.shapes.add_textbox(Inches(cols[j]), Inches(y0), Inches(3.2), Inches(0.45))
-            hp = hb.text_frame.paragraphs[0]
-            para(hp, PP_ALIGN.CENTER)
-            run(hp.add_run(), h, 22, True, self.GREEN)
-        y = 2.2
-        for row in rows:
-            for j, cell in enumerate(row):
-                cb = s.shapes.add_textbox(Inches(cols[j]), Inches(y), Inches(3.2), Inches(0.7))
-                cp = cb.text_frame.paragraphs[0]
-                cp.word_wrap = True
-                para(cp, PP_ALIGN.CENTER if j > 0 else PP_ALIGN.LEFT)
-                run(cp.add_run(), cell, 20, j == 0, self.DARK)
-            line = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.0), Inches(y + 0.75), Inches(11.3), Inches(0.015))
-            line.fill.solid()
-            line.fill.fore_color.rgb = rgb(self.LIGHT)
-            line.line.fill.background()
-            y += 0.85
-
-
-# ═══════════════════════════════════════════════════════════
-# STYLE D — 书卷风：上下分栏 + 文言注解（第24课）
-# ═══════════════════════════════════════════════════════════
-class ScrollStyle:
-    AMBER, BROWN, CREAM = (200, 150, 60), (100, 70, 30), (255, 250, 235)
-
-    def __init__(self):
-        self.bg = grad_bg(IMG / "bg_scroll.png", (255, 248, 228), (240, 220, 180))
-
-    def base(self, slide):
-        slide.shapes.add_picture(str(self.bg), 0, 0, W, H)
-
-    def cover(self, prs, title, sub):
-        s = blank(prs)
-        self.base(s)
-        # scroll shape
-        scroll = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(2), Inches(1.5), Inches(9.3), Inches(4.5))
-        scroll.fill.solid()
-        scroll.fill.fore_color.rgb = rgb(self.CREAM)
-        scroll.line.color.rgb = rgb(self.AMBER)
-        scroll.line.width = Pt(3)
-        tb = s.shapes.add_textbox(Inches(2.5), Inches(2.5), Inches(8.3), Inches(1.2))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.CENTER)
-        run(tp.add_run(), title, 48, True, self.BROWN)
-        sb = s.shapes.add_textbox(Inches(2.5), Inches(4.0), Inches(8.3), Inches(0.6))
-        sp = sb.text_frame.paragraphs[0]
-        para(sp, PP_ALIGN.CENTER)
-        run(sp.add_run(), sub, 24, False, self.AMBER)
-
-    def grid4(self, prs, title, items):
-        """2x2 grid for four fables."""
-        s = blank(prs)
-        self.base(s)
-        tb = s.shapes.add_textbox(Inches(2), Inches(0.5), Inches(9.3), Inches(0.7))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.CENTER)
-        run(tp.add_run(), title, 36, True, self.BROWN)
-        positions = [(0.8, 1.4), (6.8, 1.4), (0.8, 4.0), (6.8, 4.0)]
-        for (name, meaning), (x, y) in zip(items, positions):
-            card = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(5.5), Inches(2.3))
-            card.fill.solid()
-            card.fill.fore_color.rgb = rgb(self.CREAM)
-            card.line.color.rgb = rgb(self.AMBER)
-            nb = s.shapes.add_textbox(Inches(x + 0.2), Inches(y + 0.2), Inches(5.1), Inches(0.5))
-            np = nb.text_frame.paragraphs[0]
-            para(np, PP_ALIGN.CENTER)
-            run(np.add_run(), name, 26, True, self.AMBER)
-            mb = s.shapes.add_textbox(Inches(x + 0.2), Inches(y + 0.8), Inches(5.1), Inches(1.3))
-            mp = mb.text_frame.paragraphs[0]
-            mp.word_wrap = True
-            para(mp, PP_ALIGN.CENTER)
-            run(mp.add_run(), meaning, 20, False, self.BROWN)
-
-    def classical(self, prs, title, original, notes, translation):
-        """Like古诗 annotation slide: original + notes + translation."""
-        s = blank(prs)
-        self.base(s)
-        tb = s.shapes.add_textbox(Inches(2), Inches(0.45), Inches(9.3), Inches(0.6))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.CENTER)
-        run(tp.add_run(), title, 32, True, self.BROWN)
-        # original line
-        ob = s.shapes.add_textbox(Inches(1), Inches(1.3), Inches(11.3), Inches(0.8))
-        op = ob.text_frame.paragraphs[0]
-        para(op, PP_ALIGN.CENTER)
-        run(op.add_run(), original, 36, True, self.BROWN)
-        # annotation lines
-        for i, (word, note) in enumerate(notes):
-            x = 1.5 + i * 2.8
-            wb = s.shapes.add_textbox(Inches(x), Inches(2.5), Inches(2.5), Inches(0.5))
-            wp = wb.text_frame.paragraphs[0]
-            para(wp, PP_ALIGN.CENTER)
-            run(wp.add_run(), word, 24, True, self.AMBER)
-            nb = s.shapes.add_textbox(Inches(x), Inches(3.1), Inches(2.5), Inches(0.6))
-            np = nb.text_frame.paragraphs[0]
-            np.word_wrap = True
-            para(np, PP_ALIGN.CENTER)
-            run(np.add_run(), note, 20, False, self.BROWN)
-            # connector line
-            ln = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.2), Inches(2.3 + i * 0.05), Inches(11), Inches(0.015))
-            ln.fill.solid()
-            ln.fill.fore_color.rgb = rgb(self.AMBER)
-            ln.line.fill.background()
-        # translation
-        lb = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1), Inches(4.5), Inches(11.3), Inches(0.04))
-        lb.fill.solid()
-        lb.fill.fore_color.rgb = rgb(self.AMBER)
-        lb.line.fill.background()
-        trb = s.shapes.add_textbox(Inches(1.5), Inches(4.8), Inches(10.3), Inches(0.8))
-        trp = trb.text_frame.paragraphs[0]
-        para(trp, PP_ALIGN.CENTER)
-        run(trp.add_run(), translation, 28, False, self.BROWN)
-
-    def notes(self, prs, title, items):
-        s = blank(prs)
-        self.base(s)
-        tb = s.shapes.add_textbox(Inches(1.5), Inches(0.5), Inches(10.3), Inches(0.7))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.LEFT)
-        run(tp.add_run(), title, 32, True, self.BROWN)
-        y = 1.4
-        for key, val in items:
-            kb = s.shapes.add_textbox(Inches(1.2), Inches(y), Inches(2.5), Inches(0.5))
-            kp = kb.text_frame.paragraphs[0]
-            para(kp, PP_ALIGN.RIGHT)
-            run(kp.add_run(), key, 22, True, self.AMBER)
-            vb = s.shapes.add_textbox(Inches(4.0), Inches(y), Inches(8.5), Inches(0.7))
+                vb = slide.shapes.add_textbox(Inches(1.6), Inches(y), Inches(10.3), Inches(0.75))
             vp = vb.text_frame.paragraphs[0]
             vp.word_wrap = True
-            para(vp, PP_ALIGN.LEFT)
-            run(vp.add_run(), val, 22, False, self.BROWN)
-            y += 0.8
+            set_para(vp, PP_ALIGN.LEFT)
+            set_run(vp.add_run(), val, 22, False, self.t["text"])
 
-    def activity(self, prs, title, items):
-        self.notes(prs, f"▶ {title}", [(f"{i}", v) for i, v in enumerate(items, 1)])
-
-
-# ═══════════════════════════════════════════════════════════
-# STYLE E — 目录展板式（单元成果展示）
-# ═══════════════════════════════════════════════════════════
-class ShowcaseStyle:
-    PURPLE, PINK, DARK = (120, 70, 150), (230, 100, 150), (50, 30, 70)
-
-    def __init__(self):
-        self.bg = grad_bg(IMG / "bg_show.png", (245, 238, 252), (220, 200, 240))
-
-    def frame(self, slide):
-        slide.shapes.add_picture(str(self.bg), 0, 0, W, H)
-        rect = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, FL, FT, FW, FH)
-        rect.fill.background()
-        rect.line.color.rgb = rgb(self.PURPLE)
-        rect.line.width = Pt(2)
-
-    def cover(self, prs, title, sub):
-        s = blank(prs)
-        self.frame(s)
-        # big 目/录 style
-        for ch, x, sz in [("想", 4.5, 80), ("象", 5.8, 80), ("力", 7.1, 80)]:
-            box = s.shapes.add_textbox(Inches(x), Inches(1.5), Inches(1.5), Inches(1.5))
+    def _question(self, slide, q, hint=None):
+        self._tag(slide, "想一想", 1.1)
+        self._title(slide, q, 1.75, 32)
+        if hint:
+            self._divider(slide, 4.8)
+            box = slide.shapes.add_textbox(Inches(2), Inches(5.1), Inches(9.3), Inches(1.0))
             p = box.text_frame.paragraphs[0]
-            para(p, PP_ALIGN.CENTER)
-            run(p.add_run(), ch, sz, True, self.PURPLE)
-        sb = s.shapes.add_textbox(Inches(3.5), Inches(4.5), Inches(6.3), Inches(0.8))
-        sp = sb.text_frame.paragraphs[0]
-        para(sp, PP_ALIGN.CENTER)
-        run(sp.add_run(), sub, 28, False, self.DARK)
-        # directory items
-        items = ["《小圣施威降大圣》", "《皇帝的新装》", "《女娲造人》", "《寓言四则》"]
-        positions = [(1.8, 5.5), (7.0, 5.5), (1.8, 6.3), (7.0, 6.3)]
-        for i, (text, (x, y)) in enumerate(zip(items, positions), 1):
-            circ = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(x), Inches(y), Inches(0.45), Inches(0.45))
-            circ.fill.solid()
-            circ.fill.fore_color.rgb = rgb(self.PINK)
-            circ.line.fill.background()
-            nb = s.shapes.add_textbox(Inches(x), Inches(y + 0.03), Inches(0.45), Inches(0.42))
-            np = nb.text_frame.paragraphs[0]
-            para(np, PP_ALIGN.CENTER)
-            run(np.add_run(), str(i), 16, True, (255, 255, 255))
-            lb = s.shapes.add_textbox(Inches(x + 0.55), Inches(y - 0.02), Inches(5), Inches(0.5))
-            lp = lb.text_frame.paragraphs[0]
-            para(lp, PP_ALIGN.LEFT)
-            run(lp.add_run(), text, 22, True, self.DARK)
+            set_para(p, PP_ALIGN.CENTER)
+            set_run(p.add_run(), hint, 22, False, self.t["accent"])
 
-    def content(self, prs, title, items):
-        s = blank(prs)
-        self.frame(s)
-        tb = s.shapes.add_textbox(Inches(3), Inches(0.6), Inches(7.3), Inches(0.8))
-        tp = tb.text_frame.paragraphs[0]
-        para(tp, PP_ALIGN.CENTER)
-        run(tp.add_run(), title, 38, True, self.PURPLE)
-        y = 1.6
-        for i, item in enumerate(items, 1):
-            if isinstance(item, tuple):
-                key, val = item
-                text = f"{key}：{val}"
-            else:
-                text = item
-            circ = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(1.5), Inches(y), Inches(0.42), Inches(0.42))
-            circ.fill.solid()
-            circ.fill.fore_color.rgb = rgb(self.PINK)
-            circ.line.fill.background()
-            nb = s.shapes.add_textbox(Inches(1.5), Inches(y + 0.02), Inches(0.42), Inches(0.38))
-            np = nb.text_frame.paragraphs[0]
-            para(np, PP_ALIGN.CENTER)
-            run(np.add_run(), str(i), 14, True, (255, 255, 255))
-            bb = s.shapes.add_textbox(Inches(2.1), Inches(y - 0.02), Inches(10), Inches(0.65))
-            bp = bb.text_frame.paragraphs[0]
-            bp.word_wrap = True
-            para(bp, PP_ALIGN.LEFT)
-            if isinstance(item, tuple):
-                run(bp.add_run(), f"{item[0]}：", 24, True, self.PURPLE)
-                run(bp.add_run(), item[1], 24, False, self.DARK)
-            else:
-                run(bp.add_run(), item, 24, False, self.DARK)
-            y += 0.75
+    def cover(self, main, sub):
+        slide = self._blank()
+        self._base(slide)
+        self._frame(slide, double=True)
+        box = slide.shapes.add_textbox(Inches(1.5), Inches(2.0), Inches(10.3), Inches(2.0))
+        p = box.text_frame.paragraphs[0]
+        set_para(p, PP_ALIGN.CENTER)
+        set_run(p.add_run(), main, 52, True, self.t["accent"])
+        p2 = box.text_frame.add_paragraph()
+        set_para(p2, PP_ALIGN.CENTER)
+        set_run(p2.add_run(), sub, 26, False, self.t["text"])
+        self._divider(slide, 5.5)
+
+    def content(self, title, tag, items, compact=False):
+        slide = self._blank()
+        self._base(slide)
+        self._tag(slide, tag, 0.55)
+        self._title(slide, title, 1.15, 36)
+        self._divider(slide, 1.85)
+        self._bullets(slide, items, 2.1, compact=compact)
+
+    def knowledge(self, title, items, tag="课堂笔记"):
+        slide = self._blank()
+        self._base(slide)
+        self._tag(slide, tag, 0.55)
+        self._title(slide, title, 1.15, 36)
+        self._divider(slide, 1.85)
+        self._clean_notes(slide, items, 2.1)
+
+    def think(self, q, hint=None):
+        slide = self._blank()
+        self._base(slide)
+        self._question(slide, q, hint)
+
+    def summary(self, lines):
+        self.content("课堂小结", "回顾收获", lines, compact=True)
+
+    def save(self, name):
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        path = OUT_DIR / name
+        self.prs.save(str(path))
+        print(f"✓ {path.name} ({len(self.prs.slides)} slides) [{self.t['name']}]")
 
 
-# ═══════════════════════════════════════════════════════════
-# BUILD LESSONS
-# ═══════════════════════════════════════════════════════════
+# ── Lesson content (aligned with 学历案) ───────────────────────────
 
 def build_lesson21():
-    s = LunyuStyle()
-    prs = new_prs()
-    s.cover(prs, "小圣施威降大圣", "第21课 · 吴承恩《西游记》", "母题：自由与规则")
-    s.knowledge(prs, "选文背景", "文学常识", [
+    d = ThemedDeck("wukong")
+    d.cover("小圣施威降大圣", "第21课 · 第二、三课时 · 自由与规则")
+    d.knowledge("文学常识", [
         ("作者", "吴承恩，明代小说家"),
-        ("出处", "章回体长篇小说《西游记》"),
+        ("出处", "章回体长篇小说《西游记》节选"),
         ("文体", "神魔小说——以神魔斗法写人情世故"),
-        ("情节", "悟空大闹天宫后，二郎神奉旨捉拿，二人变化斗法"),
+        ("本文情节", "孙悟空大闹天宫后，二郎神奉旨捉拿，二人变化斗法"),
     ])
-    s.knowledge(prs, "变化相克", "情节梳理", [
+    d.knowledge("变化链梳理", [
         ("第1轮", "悟空变鸟→二郎变鹰；悟空变鱼→二郎变鱼鹰"),
         ("第2轮", "悟空变水蛇→二郎变灰鹤；悟空变花鸨→二郎现原身"),
-        ("第3轮", "悟空变庙宇（尾巴变旗竿）→二郎识破"),
-        ("规律", "孙悟空先变，二郎神以相克之物随即相对"),
-    ])
-    s.twocol(prs, "人物赏析", "孙悟空", [
-        ("特点", "机敏善变、好胜不屈"),
-        ("证据", "连续变化、不肯认输"),
-        ("作用", "体现对自由的追求"),
-    ], "二郎神", [
-        ("特点", "沉着冷静、维护秩序"),
-        ("证据", "紧追不舍、识破破绽"),
-        ("作用", "体现规则的力量"),
-    ])
-    s.knowledge(prs, "名家点评", "主题探究", [
-        ("鲁迅", "「使神魔皆有人情，精魅亦通世故」"),
+        ("第3轮", "悟空变庙宇，尾巴变旗竿→二郎识破"),
+        ("规律", "孙悟空先变，二郎神随即以相克之物相对"),
+    ], tag="情节笔记")
+    d.knowledge("人物赏析", [
+        ("孙悟空", "机敏善变、好胜不屈，追求自由（证据：连续变化、不肯认输）"),
+        ("二郎神", "沉着冷静、法力高强，维护天庭秩序（证据：紧追不舍、识破破绽）"),
+        ("分析方法", "证据—特点—作用：找细节→概括性格→联系主题"),
+        ("变旗竿", "紧张又好笑——神通广大也有露馅之时"),
+    ], tag="人物笔记")
+    d.knowledge("名家点评", [
+        ("鲁迅", "「使神魔皆有人情，精魅亦通世故」——神魔也有人的情感"),
         ("林庚", "不宜看得过于认真，应看到儿童的心理与行为"),
-        ("方法", "证据—特点—作用"),
-        ("策展主题", "自由可贵，但不可无视规则"),
-    ])
-    s.activity(prs, "学习任务", [
+        ("艺术特色", "想象基于「相克」逻辑，变化链环环相扣"),
+        ("策展主题", "自由可贵，但不可无视规则（自由与规则）"),
+    ], tag="主题笔记")
+    d.content("学习任务", "课堂活动", [
         "填写七十二变对照表，标出相克关系",
         "完成人物档案卡（证据—特点—作用）",
-        "写80字「赛事快讯」，至少三次变化",
+        "用「孙悟空先……，二郎神便……」复述最精彩一轮",
     ])
-    save(prs, "第21课 小圣施威降大圣.pptx")
+    d.summary([
+        "神魔小说：想象在「相克」中见趣味，在斗法中见人情",
+        "变化链是因果回应，不是随意编造",
+        "策展主题一：自由与规则",
+    ])
+    d.content("课后作业", "课后延伸", [
+        ("必做", "写80字「赛事快讯」（至少三次变化）"),
+        ("积累", "《西游记》作者吴承恩，成书明代；再写一个孙悟空经典情节"),
+    ])
+    d.save("第21课 小圣施威降大圣.pptx")
 
 
 def build_lesson22():
-    s = JinanStyle()
-    prs = new_prs()
-    s.cover(prs, "皇 帝 的 新 装", "安徒生", "母题：真实与虚假")
-    s.section(prs, "文学常识", "知人论世", [
+    d = ThemedDeck("emperor")
+    d.cover("皇帝的新装", "第22课 · 第四、五课时 · 真实与虚假")
+    d.knowledge("文学常识", [
         ("作者", "安徒生，丹麦童话作家"),
         ("文体", "童话——用虚构故事反映现实生活"),
-        ("特点", "以「新装」为线索，写一个荒唐的骗局"),
-        ("核心", "为什么人们都不敢说自己看不见？"),
+        ("本文特点", "以「新装」为线索，写一个荒唐的骗局"),
+        ("核心问题", "为什么人们都不敢说自己看不见？"),
     ])
-    s.section(prs, "构建逻辑：梳理情节", "给骗局画流程图", [
-        "两个骗子：能织出只有聪明人才能看见的衣服",
-        "老大臣、官员、皇帝：先后「看布」，不敢说真话",
-        "全城游行：百姓假装看见新装",
-        "小孩说真话→百姓跟着说→皇帝仍装模作样",
-    ], logic=True)
-    s.section(prs, "构建逻辑：品味手法", "拆解心理机关", [
-        ("夸张", "把皇帝爱新衣写到极致"),
-        ("反讽", "说「看见了」其实什么也没看见"),
+    d.knowledge("情节结构", [
+        ("开端", "两个骗子说能织出只有聪明人才能看见的衣服"),
+        ("发展", "皇帝、老大臣、官员先后「看布」，都不敢说真话"),
+        ("高潮", "皇帝穿上「新装」游行，百姓假装看见"),
+        ("结局", "小孩子说「他没穿衣服」，百姓跟着说，皇帝仍装模作样"),
+    ], tag="情节笔记")
+    d.knowledge("艺术手法", [
+        ("夸张", "把皇帝爱新衣写到极致：「除非为了炫耀新衣服」"),
+        ("反讽", "说「看见了」其实什么也没看见，讽刺虚伪"),
         ("对比", "大人的怯懦 vs 孩子的天真诚实"),
-        ("反复", "「我什么也没有看见」强化讽刺"),
-    ])
-    s.section(prs, "构建逻辑：探究主题", "真话为何难以说出口", [
-        "害怕被认为「不聪明」或「不称职」",
-        "讽刺盲从权威、虚伪逢迎的官场风气",
-        "孩子的天真是不被虚假规则束缚的诚实",
-        "策展主题：面对虚假，要敢于说真话",
-    ])
-    s.activity(prs, "学习任务", [
-        "画骗局流程图，勾画人物心理",
+        ("反复", "「我什么也没有看见」反复出现，强化讽刺效果"),
+    ], tag="手法笔记")
+    d.knowledge("主题理解", [
+        ("心理机制", "害怕被认为「不聪明」或「不称职」而丢失地位"),
+        ("社会批判", "讽刺盲从权威、虚伪逢迎的官场风气"),
+        ("孩子作用", "天真不受虚假规则束缚，一语道破真相"),
+        ("策展主题", "面对虚假，要敢于说真话，不做沉默的大多数"),
+    ], tag="主题笔记")
+    d.content("学习任务", "课堂活动", [
+        "画骗局流程图，用箭头串联各环节",
+        "勾画老大臣、官员、皇帝的心理和语言",
         "完成人物分析卡（证据—特点—作用）",
-        "用150字概括故事，写50字情境运用",
     ])
-    save(prs, "第22课 皇帝的新装.pptx")
+    d.summary([
+        "夸张+反讽+对比，让笑声指向盲从与虚伪",
+        "「新装」是谎言，更是照见人性的镜子",
+        "策展主题二：真实与虚假",
+    ])
+    d.content("课后作业", "课后延伸", [
+        ("必做", "用150字概括故事"),
+        ("情境", "班级群流传「震惊」消息，你会怎么做？（50字）"),
+    ])
+    d.save("第22课 皇帝的新装.pptx")
 
 
 def build_lesson23():
-    s = GushiStyle()
-    prs = new_prs()
-    s.cover(prs, "女娲造人", "袁珂 · 母题：创造与生命")
-    s.titled(prs, "文学常识", [
+    d = ThemedDeck("nuwa")
+    d.cover("女娲造人", "第23课 · 第六、七课时 · 创造与生命")
+    d.knowledge("文学常识", [
         ("作者", "袁珂（现代作家，神话研究专家）"),
         ("文体", "神话——用想象解释自然与人类起源"),
-        ("特点", "在古籍记载基础上增删改写，赋予现代意识"),
-        ("材料", "对比教材「阅读提示」中的《风俗通》"),
+        ("改写特点", "在古籍记载基础上增删改写，赋予现代意识"),
+        ("对比材料", "教材「阅读提示」中的《风俗通》记载"),
     ])
-    s.titled(prs, "造人过程", [
+    d.knowledge("造人过程", [
         ("起因", "女娲行走世间，感到孤独寂寞"),
-        ("方法一", "黄泥和水揉成小泥人，落地即活"),
-        ("方法二", "藤条蘸泥浆挥洒，泥点也变成人"),
+        ("方法一", "黄泥和水，揉成小泥人，泥人落地即活"),
+        ("方法二", "藤条蘸泥浆挥洒，溅落的泥点也变成人"),
         ("结果", "建立婚姻制度，让人类繁衍生息"),
-    ])
-    s.titled(prs, "想象特点", [
+    ], tag="情节笔记")
+    d.knowledge("想象特点", [
         ("具体", "池水照影见自己面容→想到造同类"),
-        ("生动", "藤条一挥，满天泥浆洒落"),
-        ("温暖", "造人后的疲倦、喜悦，神有人的情感"),
-        ("规律", "想象基于生活经验，又超越现实"),
-    ])
-    s.compare_table(prs, "比较阅读：古籍与课文", [
-        ("记载风格", "简洁，重在说明方法", "增加心理、细节、情感"),
-        ("造人动机", "未详写", "突出孤独寂寞"),
-        ("改写意图", "——", "表达对生命与创造的礼赞"),
-    ])
-    s.titled(prs, "学习任务", [
+        ("生动", "「藤条一挥，满天泥浆洒落」画面感强"),
+        ("温暖", "造人后的疲倦、喜悦，赋予神以人的情感"),
+        ("规律", "想象基于生活经验（和泥、洒水），又超越现实"),
+    ], tag="写法笔记")
+    d.knowledge("比较阅读", [
+        ("《风俗通》", "记载简洁，重在说明造人方法"),
+        ("课文", "增加孤独心理、造人细节、情感描写"),
+        ("改写意图", "让神话更生动，表达对生命与创造的礼赞"),
+        ("策展主题", "生命来之不易，创造值得珍视（创造与生命）"),
+    ], tag="主题笔记")
+    d.content("学习任务", "课堂活动", [
         "给女娲行动排序，比较两种造人方法",
         "完成「古籍与课文」比较表",
         "以「我看见女娲……」写100字画面描述",
-    ], numbered=True)
-    save(prs, "第23课 女娲造人.pptx")
+    ])
+    d.summary([
+        "神话想象：基于古籍，超越古籍，有温度",
+        "女娲：神性与人性并存——孤独、疲倦、喜悦",
+        "策展主题三：创造与生命",
+    ])
+    d.content("课后作业", "课后延伸", [
+        ("必做", "以「我看见女娲……」写100字画面"),
+        ("选做", "查找一个中国创世神话，与本文比较"),
+    ])
+    d.save("第23课 女娲造人.pptx")
 
 
 def build_lesson24():
-    s = ScrollStyle()
-    prs = new_prs()
-    s.cover(prs, "寓言四则", "母题：智慧与局限")
-    s.notes(prs, "文体知识", [
-        ("寓言", "短小故事，寄寓深刻道理，多运用拟人"),
-        ("特点", "情节简短、人物典型、寓意明确"),
-        ("出处", "《赫耳墨斯和雕像者》《蚊子和狮子》→《伊索寓言》"),
-        ("", "《穿井得一人》《杞人忧天》→《吕氏春秋》"),
+    d = ThemedDeck("fable")
+    d.cover("寓言四则", "第24课 · 第八、九课时 · 智慧与局限")
+    d.knowledge("文体知识", [
+        ("寓言", "短小故事，寄寓深刻道理，多运用拟人手法"),
+        ("特点", "情节简短、人物典型、寓意明确、多讽刺或警醒"),
+        ("四则出处", "《赫耳墨斯和雕像者》《蚊子和狮子》出自《伊索寓言》"),
+        ("", "《穿井得一人》《杞人忧天》出自《吕氏春秋》"),
     ])
-    s.grid4(prs, "四则寓意", [
-        ("《赫耳墨斯和雕像者》", "讽刺自高自大、妄自尊重的人"),
-        ("《蚊子和狮子》", "再小的个体也有长处，骄兵必败"),
-        ("《穿井得一人》", "以讹传讹，调查求证才能辨明真相"),
-        ("《杞人忧天》", "讽刺不必要的担忧（也可读出忧患意识）"),
-    ])
-    s.classical(prs, "文言积累",
-                "得一人之使，非得一人于井中也。",
-                [("闻", "听说"), ("道", "讲述"), ("亡", "同「无」"), ("只使", "纵使")],
-                "节省了一个人的劳力，并不是从井里挖出一个人。")
-    s.notes(prs, "写法探究", [
-        ("情节设计", "寓意藏在欲望、选择与意外后果中"),
-        ("改情节", "蚊子平静离开→寓意变为「懂得适可而止」"),
-        ("阅读法", "读懂「为什么这样结尾」"),
-        ("策展主题", "认识认知局限，善用智慧"),
-    ])
-    s.activity(prs, "学习任务", [
+    d.knowledge("四则寓意", [
+        ("赫耳墨斯", "讽刺自高自大、妄自尊重的人"),
+        ("蚊子和狮子", "再小的个体也有长处，骄兵必败"),
+        ("穿井得一人", "以讹传讹，调查求证才能辨明真相"),
+        ("杞人忧天", "讽刺不必要的担忧（也可读出忧患意识）"),
+    ], tag="寓意笔记")
+    d.knowledge("文言词语", [
+        ("闻", "听说"),
+        ("传", "传播、流传"),
+        ("道", "讲述、说"),
+        ("亡", "同「无」，没有"),
+    ], tag="文言笔记")
+    d.knowledge("文言翻译", [
+        ("只使", "纵使、即使"),
+        ("中伤", "伤害"),
+        ("重点句", "得一人之使，非得一人于井中也"),
+        ("句意", "节省一人劳力，不是井里挖出一人"),
+    ], tag="文言笔记")
+    d.knowledge("写法探究", [
+        ("情节设计", "寓意藏在人物的欲望、选择与意外后果中"),
+        ("改情节改寓意", "蚊子战胜后平静离开→寓意从「骄兵必败」变为「懂得适可而止」"),
+        ("阅读方法", "读懂「为什么这样结尾」，才能读到真正的提醒"),
+        ("策展主题", "认识自己的认知局限，善用智慧（智慧与局限）"),
+    ], tag="主题笔记")
+    d.content("学习任务", "课堂活动", [
         "完成「寓言档案卡」，概括四则寓意",
         "解释加点词，翻译重点句",
         "任选一则寓言新编（100—200字）",
     ])
-    save(prs, "第24课 寓言四则.pptx")
+    d.summary([
+        "寓言=故事+道理，道理由情节自然推出",
+        "文言：闻、传、道、亡；重点句要准确翻译",
+        "策展主题四：智慧与局限",
+    ])
+    d.content("课后作业", "课后延伸", [
+        ("必做", "用「这则寓言告诉我们……」写《蚊子和狮子》启示"),
+        ("背诵", "得一人之使，非得一人于井中也"),
+    ])
+    d.save("第24课 寓言四则.pptx")
 
 
 def build_showcase():
-    s = ShowcaseStyle()
-    prs = new_prs()
-    s.cover(prs, "想象力博物馆", "第七单元学历案 · 成果展示")
-    s.content(prs, "单元母题链", [
-        ("单元母题", "想象与真实"),
-        ("自由与规则", "《小圣施威降大圣》"),
-        ("真实与虚假", "《皇帝的新装》"),
-        ("创造与生命", "《女娲造人》"),
-        ("智慧与局限", "《寓言四则》"),
-    ])
-    s.content(prs, "四类文本比较", [
-        ("神魔小说", "想象依据：相克逻辑；表现：连续变化"),
-        ("童话", "想象依据：生活经验；表现：夸张反讽"),
-        ("神话", "想象依据：古籍传说；表现：创世画面"),
-        ("寓言", "想象依据：生活现象；表现：拟人故事"),
-    ])
-    s.content(prs, "联想与想象", [
-        ("联想", "由一事物想到另一事物（街灯→明星）"),
-        ("想象", "在已有材料上创造新形象（天上的街市）"),
+    d = ThemedDeck("final")
+    d.cover("想象力博物馆", "第六单元学历案 · 成果展示")
+    d.knowledge("四类文本比较", [
+        ("神魔小说", "想象依据：相克逻辑；表现：连续变化；意味：人情世故"),
+        ("童话", "想象依据：生活经验；表现：夸张反讽；意味：照见人性"),
+        ("神话", "想象依据：古籍传说；表现：创世画面；意味：礼赞生命"),
+        ("寓言", "想象依据：生活现象；表现：拟人故事；意味：警醒智慧"),
+    ], tag="比较笔记")
+    d.knowledge("联想与想象", [
+        ("联想", "由一事物想到另一事物（街灯→明星，因形状相似）"),
+        ("想象", "在已有材料上创造新形象（天上的街市、牛郎织女骑牛）"),
         ("写作要求", "有依据、合逻辑、有新意"),
-        ("创作路径", "触发点→联想链→情节转折→主题"),
-    ])
-    s.content(prs, "想象说明卡", [
+        ("创作路径", "触发点→联想链→情节转折→表达主题"),
+    ], tag="写作笔记")
+    d.knowledge("想象说明卡", [
         ("文本片段", "从本单元选一个精彩片段"),
-        ("想象依据", "从什么现实经验或材料出发？"),
-        ("表现方式", "用了什么手法？神奇之处在哪？"),
-        ("现实意味", "照见了怎样的生活道理？"),
-    ])
-    s.content(prs, "成果展示要求", [
-        "布展：说明卡+创作作品",
+        ("想象依据", "它从什么现实经验或材料出发？"),
+        ("表现方式", "用了什么手法？（变化/夸张/改写/拟人）"),
+        ("现实意味", "照见了怎样的生活道理？（联系策展主题）"),
+    ], tag="策展笔记")
+    d.content("成果展示要求", "展示活动", [
+        "布展：说明卡+创作作品，附「请看我如何从文本出发」",
         "讲解：30秒依据+60秒亮点+30秒思考",
-        "评价：投「发现卡」——最有依据/最有新意",
-        "作业：600字想象作文或5分钟课本剧",
+        "评价：投「发现卡」——最有依据 / 最有新意",
     ])
-    save(prs, "单元成果展示.pptx")
+    d.knowledge("单元回顾", [
+        ("母题链", "自由→真实→创造→智慧"),
+        ("核心领悟", "想象必须扎根于真实，飞得再高也要落回地面"),
+        ("单元作业", "600字想象作文，或5分钟课本剧脚本"),
+        ("要求", "有依据、合逻辑、有新意，体现策展主题"),
+    ], tag="总结笔记")
+    d.save("单元成果展示.pptx")
 
 
 def cleanup():
-    """Remove extra files."""
     keep = {
         "第21课 小圣施威降大圣.pptx",
         "第22课 皇帝的新装.pptx",
@@ -798,25 +608,20 @@ def cleanup():
         "第24课 寓言四则.pptx",
         "单元成果展示.pptx",
     }
-    for f in OUT.glob("*.pptx"):
+    for f in OUT_DIR.glob("*.pptx"):
         if f.name not in keep:
             f.unlink()
             print(f"  删除 {f.name}")
-    for f in Path("/workspace").glob("unit6-*.pptx"):
-        f.unlink()
-    zipf = Path("/workspace/unit6-all-ppts.zip")
-    if zipf.exists():
-        zipf.unlink()
 
 
 def main():
+    import shutil
     build_lesson21()
     build_lesson22()
     build_lesson23()
     build_lesson24()
     build_showcase()
     cleanup()
-    # English copies
     copies = {
         "第21课 小圣施威降大圣.pptx": "unit6-lesson21-wukong.pptx",
         "第22课 皇帝的新装.pptx": "unit6-lesson22-emperor.pptx",
@@ -825,8 +630,8 @@ def main():
         "单元成果展示.pptx": "unit6-showcase.pptx",
     }
     for cn, en in copies.items():
-        shutil.copy2(OUT / cn, Path("/workspace") / en)
-    print("\n完成！仅保留5个PPT，每课风格不同。")
+        shutil.copy2(OUT_DIR / cn, Path("/workspace") / en)
+    print("\n全部生成完成！")
 
 
 if __name__ == "__main__":
