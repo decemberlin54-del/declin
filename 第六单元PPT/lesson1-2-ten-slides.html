@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>神技背后的真实：自由边界与生命创造</title>
+  <style>
+    :root {
+      --bg-main: #F5F3EC;
+      --card-bg: #FFFFFF;
+      --primary-green: #6B9080;
+      --secondary-blue: #587B7C;
+      --accent-pink: #B5838D;
+      --accent-clay: #E09F68;
+      --text-dark: #2F3E46;
+      --text-muted: #84A98C;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #D8D4D0;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 20px;
+    }
+
+    .viewport {
+      position: relative;
+    }
+
+    .slide-container {
+      width: 1280px;
+      height: 720px;
+      background-color: var(--bg-main);
+      border-radius: 12px;
+      padding: 40px 60px;
+      position: relative;
+      overflow: hidden;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+    }
+
+    .slide-container.active { display: flex; }
+
+    .nav-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid rgba(107, 144, 128, 0.2);
+      padding-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .slide-meta { font-size: 14px; color: var(--text-muted); }
+
+    .nav-tabs { display: flex; gap: 12px; }
+
+    .nav-tab {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      background: #E8E5DA;
+      color: var(--text-dark);
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
+
+    .nav-tab.active {
+      background: var(--primary-green);
+      color: #FFF;
+      font-weight: bold;
+    }
+
+    .main-title {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text-dark);
+      text-align: center;
+      margin: 20px 0 24px;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+
+    .main-title .accent { color: var(--primary-green); }
+    .main-title .warm { color: var(--accent-clay); }
+
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      height: 100%;
+    }
+
+    .content-single {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      justify-content: center;
+    }
+
+    .interactive-card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 24px 28px;
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .interactive-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-green { border-top: 4px solid var(--primary-green); }
+    .card-clay { border-top: 4px solid var(--accent-clay); }
+    .card-pink { border-top: 4px solid var(--accent-pink); }
+    .card-blue { border-top: 4px solid var(--secondary-blue); }
+
+    .card-label {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .card-green .card-label { color: var(--primary-green); }
+    .card-clay .card-label { color: var(--accent-clay); }
+    .card-pink .card-label { color: var(--accent-pink); }
+    .card-blue .card-label { color: var(--secondary-blue); }
+
+    .card-heading {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 14px;
+      line-height: 1.3;
+    }
+
+    .guide-question {
+      font-size: 20px;
+      color: var(--secondary-blue);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .note-point {
+      font-size: 20px;
+      color: var(--text-dark);
+      line-height: 1.6;
+    }
+
+    .bullet-list {
+      list-style: none;
+      font-size: 20px;
+      color: var(--text-dark);
+      line-height: 1.7;
+    }
+
+    .bullet-list li::before {
+      content: "· ";
+      color: var(--primary-green);
+      font-weight: bold;
+    }
+
+    .flow-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .flow-step {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 16px 20px;
+      font-size: 18px;
+      color: var(--text-dark);
+      text-align: center;
+      min-width: 140px;
+      border: 1px solid rgba(107, 144, 128, 0.2);
+    }
+
+    .flow-arrow { color: var(--accent-clay); font-size: 22px; font-weight: bold; }
+
+    mark {
+      background-color: rgba(181, 131, 141, 0.25);
+      color: #8B4254;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .card-clay mark {
+      background-color: rgba(224, 159, 104, 0.22);
+      color: #9A5E2E;
+    }
+
+    .footer-summary {
+      text-align: center;
+      font-size: 20px;
+      color: var(--text-dark);
+      padding-top: 16px;
+      border-top: 1px solid rgba(107, 144, 128, 0.15);
+      flex-shrink: 0;
+      line-height: 1.5;
+    }
+
+    .footer-summary em {
+      font-style: normal;
+      color: var(--accent-pink);
+      font-weight: 600;
+    }
+
+    .cover-center {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex: 1;
+    }
+
+    .cover-title {
+      font-size: 42px;
+      font-weight: 700;
+      color: var(--text-dark);
+      line-height: 1.3;
+    }
+
+    .cover-sub {
+      font-size: 22px;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      background: #E8E5DA;
+      border-radius: 24px;
+      padding: 10px 28px;
+      font-size: 18px;
+      color: var(--primary-green);
+      font-weight: 600;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      color: var(--text-dark);
+      font-size: 14px;
+    }
+
+    .controls button {
+      padding: 8px 20px;
+      border-radius: 20px;
+      border: none;
+      background: var(--primary-green);
+      color: #fff;
+      font-family: inherit;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .controls button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 18px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .compare-table th {
+      background: var(--primary-green);
+      color: #fff;
+      padding: 12px 16px;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .compare-table td {
+      padding: 12px 16px;
+      color: var(--text-dark);
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="viewport">
+    <!-- Slide 1: 封面 -->
+    <section class="slide-container active" data-slide="1">
+      <header class="nav-header">
+        <span class="slide-meta">七年级上 · 第六单元 · 第1—2课时</span>
+        <nav class="nav-tabs">
+          <button class="nav-tab active">封面</button>
+        </nav>
+      </header>
+      <div class="cover-center">
+        <h1 class="cover-title">神技背后的真实<br><span class="accent" style="color:var(--primary-green)">自由边界</span>与<span class="warm" style="color:var(--accent-clay)">生命创造</span></h1>
+        <p class="cover-sub">想象力博物馆 · 单元导学</p>
+        <span class="badge">想象与真实</span>
+      </div>
+      <footer class="footer-summary">在奇思妙想中照见真实，在神技变化中读懂人心。</footer>
+    </section>
+
+    <!-- Slide 2: 单元情境 -->
+    <section class="slide-container" data-slide="2">
+      <header class="nav-header">
+        <span class="slide-meta">单元情境</span>
+        <nav class="nav-tabs">
+          <button class="nav-tab">母题1自由</button>
+          <button class="nav-tab">母题2创造</button>
+        </nav>
+      </header>
+      <h2 class="main-title">你敢挑战吗？</h2>
+      <div class="slide-body content-single">
+        <div class="interactive-card card-green">
+          <div class="card-label">大任务</div>
+          <p class="note-point">举办「想象力博物馆」微展览，制作<mark>想象说明卡</mark>，说清想象从何处来、如何合理、照见何种真实。</p>
+        </div>
+        <div class="interactive-card card-pink">
+          <div class="card-label">母题链</div>
+          <p class="note-point">自由与规则 → 真实与虚假 → 创造与生命 → 智慧与局限</p>
+        </div>
+      </div>
+      <footer class="footer-summary">本单元收官：四种想象文体，一条<em>想象与真实</em>母题链。</footer>
+    </section>
+
+    <!-- Slide 3: 核心双栏（用户指定布局） -->
+    <section class="slide-container" data-slide="3">
+      <header class="nav-header">
+        <span class="slide-meta">思维对比</span>
+        <nav class="nav-tabs">
+          <button class="nav-tab active">母题1自由</button>
+          <button class="nav-tab active">母题2创造</button>
+          <button class="nav-tab">思维对比</button>
+          <button class="nav-tab">笔记沉淀</button>
+        </nav>
+      </header>
+      <h2 class="main-title">神技背后的<span class="accent">真实</span></h2>
+      <div class="slide-body content-grid">
+        <article class="interactive-card card-green">
+          <div class="card-label">母题一 · 自由与规则</div>
+          <h3 class="card-heading">孙悟空：自由与规则</h3>
+          <p class="guide-question">孙悟空变土地庙，为何露出尾巴？</p>
+          <p class="note-point"><mark>神幻想象的物理约束</mark>：变形须遵循事物原型特征。</p>
+        </article>
+        <article class="interactive-card card-clay">
+          <div class="card-label">母题二 · 创造与生命</div>
+          <h3 class="card-heading">女娲：创造与温情</h3>
+          <p class="guide-question">女娲造人，为何从"手捏"变成"挥泥"？</p>
+          <p class="note-point"><mark>情感具象化</mark>：折射抚育子女的辛劳与大爱。</p>
+        </article>
+      </div>
+      <footer class="footer-summary">真正的想象，是<em>现实逻辑</em>与<em>人类情感</em>在奇幻世界里的投射。</footer>
+    </section>
+
+    <!-- Slide 4: 学习目标 -->
+    <section class="slide-container" data-slide="4">
+      <header class="nav-header">
+        <span class="slide-meta">学习目标</span>
+        <nav class="nav-tabs"><button class="nav-tab active">笔记沉淀</button></nav>
+      </header>
+      <h2 class="main-title">你将学会什么？</h2>
+      <div class="slide-body content-single">
+        <ul class="bullet-list">
+          <li>快速默读，用<mark>节点词+简洁句</mark>概括情节</li>
+          <li>比较神魔、神话想象，说出依据与特点</li>
+          <li>用「证据—特点—作用」分析人物形象</li>
+        </ul>
+      </div>
+      <footer class="footer-summary">阅读想象类文本：既读得进奇幻，也读得出真实。</footer>
+    </section>
+
+    <!-- Slide 5: 孙悟空斗法 -->
+    <section class="slide-container" data-slide="5">
+      <header class="nav-header">
+        <span class="nav-meta slide-meta">《小圣施威降大圣》</span>
+        <nav class="nav-tabs"><button class="nav-tab active">母题1自由</button></nav>
+      </header>
+      <h2 class="main-title">七十二变：<span class="accent">自由</span>与<span class="warm" style="color:var(--accent-clay)">克制</span></h2>
+      <div class="slide-body">
+        <div class="flow-row">
+          <div class="flow-step">麻雀</div><span class="flow-arrow">→</span>
+          <div class="flow-step">鱼儿</div><span class="flow-arrow">→</span>
+          <div class="flow-step">庙宇</div><span class="flow-arrow">→</span>
+          <div class="flow-step">旗竿破绽</div>
+        </div>
+        <div class="interactive-card card-green" style="margin-top:24px">
+          <p class="note-point">变化再奇，也受<mark>相克规则</mark>与细节逻辑制约——神魔皆有人情。</p>
+        </div>
+      </div>
+      <footer class="footer-summary">策展主题一：自由可贵，但须守规则。</footer>
+    </section>
+
+    <!-- Slide 6: 女娲造人 -->
+    <section class="slide-container" data-slide="6">
+      <header class="nav-header">
+        <span class="slide-meta">《女娲造人》</span>
+        <nav class="nav-tabs"><button class="nav-tab active">母题2创造</button></nav>
+      </header>
+      <h2 class="main-title">创世神话的<span class="warm" style="color:var(--accent-clay)">温度</span></h2>
+      <div class="slide-body content-grid">
+        <div class="interactive-card card-clay">
+          <div class="card-label">古籍记载</div>
+          <p class="note-point">女娲抟黄土作人</p>
+        </div>
+        <div class="interactive-card card-clay">
+          <div class="card-label">课文改写</div>
+          <p class="note-point">孤独、喜悦、挥藤沾泥——<mark>神性与人性</mark>融合。</p>
+        </div>
+      </div>
+      <footer class="footer-summary">策展主题二：创造与生命，礼赞母爱与喜悦。</footer>
+    </section>
+
+    <!-- Slide 7: 思维对比表 -->
+    <section class="slide-container" data-slide="7">
+      <header class="nav-header">
+        <span class="slide-meta">思维对比</span>
+        <nav class="nav-tabs">
+          <button class="nav-tab active">母题1自由</button>
+          <button class="nav-tab active">母题2创造</button>
+        </nav>
+      </header>
+      <h2 class="main-title">两种想象，<span class="accent">两种面向</span></h2>
+      <div class="slide-body">
+        <table class="compare-table">
+          <tr><th>维度</th><th>神魔小说</th><th>神话改写</th></tr>
+          <tr><td>想象依据</td><td>相克逻辑、斗法规则</td><td>古籍传说、民族心理</td></tr>
+          <tr><td>表现方式</td><td>连续变化、情节斗法</td><td>添情、画面、创造过程</td></tr>
+          <tr><td>现实意味</td><td>自由与规则</td><td>创造与生命</td></tr>
+        </table>
+      </div>
+      <footer class="footer-summary">比较阅读：同有想象，各有不同表达效果。</footer>
+    </section>
+
+    <!-- Slide 8: 阅读方法 -->
+    <section class="slide-container" data-slide="8">
+      <header class="nav-header">
+        <span class="slide-meta">方法指导</span>
+        <nav class="nav-tabs"><button class="nav-tab active">笔记沉淀</button></nav>
+      </header>
+      <h2 class="main-title">怎么读<span class="accent">想象类文本</span>？</h2>
+      <div class="slide-body content-single">
+        <div class="interactive-card card-blue">
+          <p class="note-point"><mark>默读三要素</mark>：谁 — 做什么 — 结果怎样</p>
+        </div>
+        <div class="interactive-card card-blue">
+          <p class="note-point"><mark>赏析三步</mark>：证据 — 特点 — 作用</p>
+        </div>
+      </div>
+      <footer class="footer-summary">追问：它像现实中的什么？人物为何这样做？</footer>
+    </section>
+
+    <!-- Slide 9: 笔记沉淀 -->
+    <section class="slide-container" data-slide="9">
+      <header class="nav-header">
+        <span class="slide-meta">笔记沉淀</span>
+        <nav class="nav-tabs"><button class="nav-tab active">笔记沉淀</button></nav>
+      </header>
+      <h2 class="main-title">想象说明卡 · <span class="accent">初稿</span></h2>
+      <div class="slide-body content-single">
+        <div class="interactive-card card-green">
+          <p class="guide-question">文本片段 → 想象依据 → 表现方式 → 现实意味</p>
+          <p class="note-point">为一件「展品」写清：<mark>从哪来、怎样写、有何用</mark>。</p>
+        </div>
+      </div>
+      <footer class="footer-summary">为「想象力博物馆」策展，从阅读笔记开始。</footer>
+    </section>
+
+    <!-- Slide 10: 小结作业 -->
+    <section class="slide-container" data-slide="10">
+      <header class="nav-header">
+        <span class="slide-meta">课堂小结</span>
+        <nav class="nav-tabs"><button class="nav-tab active">笔记沉淀</button></nav>
+      </header>
+      <h2 class="main-title">今日<span class="accent">收获</span></h2>
+      <div class="slide-body content-single">
+        <ul class="bullet-list">
+          <li>神魔想象重<mark>自由与规则</mark></li>
+          <li>神话想象重<mark>创造与生命</mark></li>
+          <li>作业：用100字写课文梗概</li>
+        </ul>
+      </div>
+      <footer class="footer-summary">下节继续：童话里的真实与虚假。</footer>
+    </section>
+  </div>
+
+  <div class="controls">
+    <button id="prev" disabled>← 上一页</button>
+    <span id="indicator">1 / 10</span>
+    <button id="next">下一页 →</button>
+  </div>
+
+  <script>
+    const slides = document.querySelectorAll(".slide-container");
+    let current = 0;
+    const prev = document.getElementById("prev");
+    const next = document.getElementById("next");
+    const indicator = document.getElementById("indicator");
+
+    function show(i) {
+      slides[current].classList.remove("active");
+      current = Math.max(0, Math.min(i, slides.length - 1));
+      slides[current].classList.add("active");
+      indicator.textContent = `${current + 1} / ${slides.length}`;
+      prev.disabled = current === 0;
+      next.disabled = current === slides.length - 1;
+    }
+
+    prev.addEventListener("click", () => show(current - 1));
+    next.addEventListener("click", () => show(current + 1));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); show(current + 1); }
+      if (e.key === "ArrowLeft") show(current - 1);
+    });
+  </script>
+</body>
+</html>
