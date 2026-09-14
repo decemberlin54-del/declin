@@ -191,27 +191,16 @@ def build_fade_timing(shape_ids: Sequence[int], dur_ms: int = 750) -> etree._Ele
 
     groups_xml = []
     for spid in shape_ids:
-        gid = nid()
-        iid = nid()
         effect = _effect_par_fade_in(spid, "clickEffect", dur_ms, nid)
-        inner = (
+        groups_xml.append(
             f'<p:par xmlns:p="{P_NS}">'
-            f'<p:cTn id="{iid}" fill="hold">'
+            f'<p:cTn id="{nid()}" fill="hold">'
             f'<p:stCondLst><p:cond delay="0"/></p:stCondLst>'
             f"<p:childTnLst>{effect}</p:childTnLst>"
             f"</p:cTn>"
             f"</p:par>"
         )
-        groups_xml.append(
-            f'<p:par xmlns:p="{P_NS}">'
-            f'<p:cTn id="{gid}" fill="hold">'
-            f'<p:stCondLst><p:cond delay="0"/></p:stCondLst>'
-            f"<p:childTnLst>{inner}</p:childTnLst>"
-            f"</p:cTn>"
-            f"</p:par>"
-        )
 
-    bld = "".join(f'<p:bldP spid="{s}" build="p"/>' for s in shape_ids)
     xml = (
         f'<p:timing xmlns:p="{P_NS}" xmlns:a="{A_NS}">'
         f"<p:tnLst>"
@@ -226,14 +215,13 @@ def build_fade_timing(shape_ids: Sequence[int], dur_ms: int = 750) -> etree._Ele
         f'<p:cond evt="onPrev" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond>'
         f"</p:prevCondLst>"
         f"<p:nextCondLst>"
-        f'<p:cond evt="onNext" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond>'
+        f'<p:cond evt="onClick" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond>'
         f"</p:nextCondLst>"
         f"</p:seq>"
         f"</p:childTnLst>"
         f"</p:cTn>"
         f"</p:par>"
         f"</p:tnLst>"
-        f"<p:bldLst>{bld}</p:bldLst>"
         f"</p:timing>"
     )
     return etree.fromstring(xml.encode("utf-8"))
@@ -591,6 +579,13 @@ def lesson3(prs: Presentation) -> None:
     )
 
 
+def remove_all_timing(prs: Presentation) -> None:
+    for slide in prs.slides:
+        old = slide._element.find(f"{{{P_NS}}}timing")
+        if old is not None:
+            slide._element.remove(old)
+
+
 def main() -> None:
     prs = Presentation()
     prs.slide_width = SLIDE_W
@@ -598,9 +593,21 @@ def main() -> None:
     lesson1(prs)
     lesson2(prs)
     lesson3(prs)
-    out = "/workspace/古诗三课教学课件.pptx"
-    prs.save(out)
-    print(f"Saved: {out} ({len(prs.slides)} slides)")
+
+    animated_path = "/workspace/gushi-lessons-animated.pptx"
+    prs.save(animated_path)
+
+    remove_all_timing(prs)
+    stable_paths = (
+        "/workspace/gushi-lessons.pptx",
+        "/workspace/古诗三课教学课件.pptx",
+    )
+    for path in stable_paths:
+        prs.save(path)
+
+    n = len(prs.slides)
+    print(f"Saved stable (no animation): {stable_paths[0]} ({n} slides)")
+    print(f"Saved animated: {animated_path} ({n} slides)")
 
 
 if __name__ == "__main__":
