@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>《寓言四则》——短故事，大镜子</title>
+  <style>
+    :root {
+      --cream: #F5F0E8;
+      --card: #FFFFFF;
+      --navy: #2C3E6B;
+      --navy-light: #3D5288;
+      --vermillion: #C45C4A;
+      --vermillion-soft: rgba(196, 92, 74, 0.15);
+      --text: #2F3E46;
+      --muted: #6B7B8C;
+      --mirror-border: linear-gradient(135deg, #2C3E6B 0%, #C45C4A 50%, #2C3E6B 100%);
+      --slide-w: 1280px;
+      --slide-h: 720px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1a1f2e;
+      font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      color: var(--text);
+    }
+
+    #app {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stage {
+      position: relative;
+      width: var(--slide-w);
+      height: var(--slide-h);
+      transform-origin: center center;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      background: var(--cream);
+      border-radius: 12px;
+      padding: 36px 56px;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+    }
+
+    .slide.active { display: flex; }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      top: -120px;
+      right: -80px;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: rgba(44, 62, 107, 0.06);
+      pointer-events: none;
+    }
+
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid rgba(44, 62, 107, 0.15);
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    .slide-tag {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .slide-num {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--vermillion);
+    }
+
+    .slide-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 14px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    .slide-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 18px 22px;
+      border: 1px solid rgba(44, 62, 107, 0.1);
+      box-shadow: 0 4px 16px rgba(44, 62, 107, 0.06);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(44, 62, 107, 0.1); }
+
+    .card-navy { border-top: 4px solid var(--navy); }
+    .card-red { border-top: 4px solid var(--vermillion); }
+
+    .card-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+
+    .card-red .card-label { color: var(--vermillion); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+    mark {
+      background: var(--vermillion-soft);
+      color: var(--vermillion);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* ── Cover mirror ── */
+    .cover-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      position: relative;
+    }
+
+    .cover-main-title {
+      font-size: 40px;
+      font-weight: 800;
+      color: var(--navy);
+      text-align: center;
+      line-height: 1.35;
+    }
+
+    .cover-main-title em {
+      font-style: normal;
+      color: var(--vermillion);
+    }
+
+    .cover-sub {
+      font-size: 20px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .mirror-stage {
+      position: relative;
+      width: 520px;
+      height: 320px;
+      margin: 8px 0;
+    }
+
+    .mirror-frame {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 220px;
+      height: 280px;
+      border-radius: 110px 110px 16px 16px;
+      background: var(--card);
+      border: 4px solid transparent;
+      background-clip: padding-box;
+      box-shadow:
+        0 0 0 3px var(--navy),
+        inset 0 0 40px rgba(44, 62, 107, 0.08),
+        0 20px 40px rgba(44, 62, 107, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .mirror-inner {
+      font-size: 15px;
+      color: var(--navy);
+      line-height: 1.6;
+      font-weight: 600;
+    }
+
+    .mirror-inner span { color: var(--vermillion); font-size: 28px; display: block; margin-bottom: 6px; }
+
+    .fable-orbit {
+      position: absolute;
+      width: 130px;
+      padding: 12px 10px;
+      background: var(--card);
+      border-radius: 12px;
+      border: 2px solid rgba(44, 62, 107, 0.2);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy);
+      text-align: center;
+      line-height: 1.4;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+      transition: transform 0.3s, border-color 0.3s;
+      cursor: default;
+    }
+
+    .fable-orbit:hover {
+      transform: scale(1.05);
+      border-color: var(--vermillion);
+    }
+
+    .f1 { left: 0; top: 20px; }
+    .f2 { right: 0; top: 20px; }
+    .f3 { left: 0; bottom: 20px; }
+    .f4 { right: 0; bottom: 20px; }
+
+    /* ── Interactive table ── */
+    .archive-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 6px;
+      font-size: 14px;
+    }
+
+    .archive-table th {
+      background: var(--navy);
+      color: #fff;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .archive-table th:first-child { border-radius: 8px 0 0 8px; }
+    .archive-table th:last-child { border-radius: 0 8px 8px 0; }
+
+    .archive-table td {
+      background: var(--card);
+      padding: 10px 12px;
+      border-top: 1px solid rgba(44,62,107,0.06);
+      border-bottom: 1px solid rgba(44,62,107,0.06);
+      transition: background 0.2s, transform 0.2s;
+      cursor: pointer;
+    }
+
+    .archive-table tr.data-row:hover td,
+    .archive-table tr.data-row.active td {
+      background: rgba(44, 62, 107, 0.08);
+    }
+
+    .archive-table tr.data-row.active td:first-child {
+      border-left: 4px solid var(--vermillion);
+    }
+
+    .archive-table td:first-child { border-left: 1px solid rgba(44,62,107,0.06); border-radius: 8px 0 0 8px; }
+    .archive-table td:last-child { border-right: 1px solid rgba(44,62,107,0.06); border-radius: 0 8px 8px 0; }
+
+    .genre-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 14px;
+    }
+
+    .genre-pill {
+      background: var(--card);
+      border: 1px solid rgba(44,62,107,0.15);
+      border-radius: 20px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .genre-pill:hover, .genre-pill.active {
+      background: var(--navy);
+      color: #fff;
+      border-color: var(--navy);
+    }
+
+    /* ── Perspective cards ── */
+    .perspective-card {
+      flex: 1;
+      padding: 20px;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .perspective-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent 60%, rgba(255,255,255,0.4));
+      pointer-events: none;
+    }
+
+    .perspective-a {
+      background: linear-gradient(145deg, #fff 0%, rgba(44,62,107,0.06) 100%);
+      border: 2px solid var(--navy);
+    }
+
+    .perspective-b {
+      background: linear-gradient(145deg, #fff 0%, rgba(196,92,74,0.08) 100%);
+      border: 2px solid var(--vermillion);
+    }
+
+    .perspective-card.active {
+      transform: scale(1.02);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+    }
+
+    .perspective-card h3 { font-size: 18px; margin-bottom: 10px; }
+    .perspective-a h3 { color: var(--navy); }
+    .perspective-b h3 { color: var(--vermillion); }
+
+    /* ── Flow diagram ── */
+    .flow-chain {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 12px 0;
+    }
+
+    .flow-node {
+      background: var(--card);
+      border: 2px solid var(--navy);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--navy);
+      min-width: 120px;
+      text-align: center;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .flow-node:nth-child(1) { animation-delay: 0.1s; }
+    .flow-node:nth-child(3) { animation-delay: 0.3s; }
+    .flow-node:nth-child(5) { animation-delay: 0.5s; }
+    .flow-node:nth-child(7) { animation-delay: 0.7s; }
+
+    .flow-arrow {
+      color: var(--vermillion);
+      font-size: 24px;
+      font-weight: bold;
+      animation: pulseArrow 1.2s ease-in-out infinite;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulseArrow {
+      0%, 100% { opacity: 0.5; transform: translateX(0); }
+      50% { opacity: 1; transform: translateX(4px); }
+    }
+
+    /* ── Word cards ── */
+    .word-card {
+      text-align: center;
+      padding: 16px 10px;
+      cursor: pointer;
+      border-radius: 12px;
+      background: var(--card);
+      border: 2px solid rgba(44,62,107,0.15);
+      transition: all 0.25s;
+    }
+
+    .word-card:hover, .word-card.revealed {
+      border-color: var(--vermillion);
+      background: var(--vermillion-soft);
+    }
+
+    .word-char { font-size: 28px; font-weight: 800; color: var(--navy); }
+    .word-mean { font-size: 13px; color: var(--muted); margin-top: 6px; opacity: 0; transition: opacity 0.3s; }
+    .word-card.revealed .word-mean { opacity: 1; color: var(--vermillion); font-weight: 600; }
+
+    /* ── Rewrite toggle ── */
+    .rewrite-panel {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .rewrite-side {
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .rewrite-original { background: rgba(44,62,107,0.06); border: 2px dashed var(--navy); }
+    .rewrite-new { background: var(--vermillion-soft); border: 2px dashed var(--vermillion); opacity: 0.5; transition: opacity 0.4s; }
+    .rewrite-new.show { opacity: 1; }
+
+    .rewrite-vs {
+      display: flex;
+      align-items: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--vermillion);
+    }
+
+    .btn-toggle {
+      margin-top: 8px;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 20px;
+      background: var(--navy);
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-toggle:hover { background: var(--vermillion); }
+
+    /* ── Life match cards ── */
+    .life-card {
+      padding: 14px;
+      border-radius: 12px;
+      background: var(--card);
+      border-left: 4px solid var(--navy);
+      font-size: 14px;
+      line-height: 1.5;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .life-card:hover, .life-card.matched {
+      border-left-color: var(--vermillion);
+      background: var(--vermillion-soft);
+    }
+
+    .life-num {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      line-height: 22px;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--navy);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 6px;
+    }
+
+    /* ── Translation box ── */
+    .trans-box {
+      padding: 14px 18px;
+      border-radius: 10px;
+      background: var(--card);
+      border: 1px solid rgba(44,62,107,0.12);
+      font-size: 15px;
+      line-height: 1.7;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .trans-box:hover, .trans-box.show-ans {
+      background: rgba(44, 62, 107, 0.05);
+    }
+
+    .trans-ans {
+      display: none;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--vermillion);
+      color: var(--navy);
+      font-size: 14px;
+    }
+
+    .trans-box.show-ans .trans-ans { display: block; }
+
+    /* ── Interactive input ── */
+    .reflect-input {
+      width: 100%;
+      min-height: 48px;
+      border: 2px dashed rgba(44,62,107,0.25);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: none;
+      background: rgba(255,255,255,0.6);
+      transition: border-color 0.2s;
+    }
+
+    .reflect-input:focus {
+      outline: none;
+      border-color: var(--vermillion);
+      background: #fff;
+    }
+
+    /* ── Footer & controls ── */
+    .slide-footer {
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted);
+      padding-top: 10px;
+      border-top: 1px solid rgba(44,62,107,0.1);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    .toolbar {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(44, 62, 107, 0.92);
+      padding: 10px 22px;
+      border-radius: 28px;
+      color: #fff;
+      font-size: 14px;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+
+    .toolbar button {
+      border: none;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 16px;
+      font-family: inherit;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+
+    .toolbar button:hover:not(:disabled) { background: var(--vermillion); }
+    .toolbar button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .hint {
+      position: fixed;
+      top: 12px;
+      right: 16px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div class="hint">← → ↑ ↓  PageUp/PageDown 翻页 · F 全屏</div>
+  <div id="app">
+    <div class="stage" id="stage">
+
+      <!-- Slide 1 封面 -->
+      <section class="slide active" data-i="0">
+        <div class="cover-body">
+          <h1 class="cover-main-title">《寓言四则》<br><em>短故事，大镜子</em></h1>
+          <p class="cover-sub">课时六、七 · 教学演示文稿</p>
+          <div class="mirror-stage">
+            <div class="fable-orbit f1">《赫耳墨斯和<br>雕像者》</div>
+            <div class="fable-orbit f2">《蚊子<br>和狮子》</div>
+            <div class="fable-orbit f3">《穿井<br>得一人》</div>
+            <div class="fable-orbit f4">《杞人<br>忧天》</div>
+            <div class="mirror-frame">
+              <div class="mirror-inner">
+                <span>🪞</span>
+                极小故事<br>折射人性与社会
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="slide-footer">七年级上册 · 第六单元 · 第24课 · 智慧与局限</footer>
+      </section>
+
+      <!-- Slide 2 情境导入 -->
+      <section class="slide" data-i="1">
+        <header class="slide-header">
+          <span class="slide-tag">情境导入</span>
+          <span class="slide-num">02 / 08</span>
+        </header>
+        <h2 class="slide-title">为什么一句话，能掀起波澜？</h2>
+        <div class="slide-body">
+          <div class="card card-red">
+            <p style="font-size:17px;line-height:1.7;color:var(--navy);">
+              为什么《赫耳墨斯》中雕像者的一句话会让他<strong>难堪</strong>？<br>
+              为什么《穿井得一人》的一句话会在<strong>国都传开</strong>？
+            </p>
+          </div>
+          <div class="grid-2" style="flex:1;">
+            <div class="card card-navy">
+              <div class="card-label">课时目标</div>
+              <ul style="font-size:15px;line-height:1.8;padding-left:18px;">
+                <li>归纳寓言文体特点，理解各则寓意</li>
+                <li>疏通《穿井得一人》《杞人忧天》，积累文言词语</li>
+                <li>分析情节与寓意关系，探究「杞人忧天」多种理解</li>
+              </ul>
+            </div>
+            <div class="card card-red">
+              <div class="card-label">评价任务</div>
+              <ul style="font-size:15px;line-height:1.8;padding-left:18px;">
+                <li>① 完成<mark>寓言档案卡</mark>（检测目标1）</li>
+                <li>② 翻译重点句，解释文言词（检测目标2）</li>
+                <li>③ 分析寓意，联系生活谈启示（检测目标3）</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <footer class="slide-footer">任务驱动 · 短故事照见人心，大镜子折射现实</footer>
+      </section>
+
+      <!-- Slide 3 寓言档案卡 -->
+      <section class="slide" data-i="2">
+        <header class="slide-header">
+          <span class="slide-tag">学习任务一</span>
+          <span class="slide-num">03 / 08</span>
+        </header>
+        <h2 class="slide-title">寓言档案卡 · 文体初识</h2>
+        <div class="slide-body">
+          <table class="archive-table" id="archiveTable">
+            <thead>
+              <tr><th>篇目</th><th>主要人物</th><th>核心情节</th><th>寓意</th></tr>
+            </thead>
+            <tbody>
+              <tr class="data-row" data-row="0">
+                <td>《赫耳墨斯和雕像者》</td>
+                <td>赫耳墨斯、雕像者</td>
+                <td>问价自取其辱，「白送」收场</td>
+                <td>讽刺妄自尊大、自高自大</td>
+              </tr>
+              <tr class="data-row" data-row="1">
+                <td>《蚊子和狮子》</td>
+                <td>蚊子、狮子、蜘蛛</td>
+                <td>胜后凯歌，却被蛛网粘住</td>
+                <td>骄兵必败，不可得意忘形</td>
+              </tr>
+              <tr class="data-row" data-row="2">
+                <td>《穿井得一人》</td>
+                <td>丁氏、宋君</td>
+                <td>传言失真，宋君派人求证</td>
+                <td>以讹传讹，须调查求证</td>
+              </tr>
+              <tr class="data-row" data-row="3">
+                <td>《杞人忧天》</td>
+                <td>杞人、晓之者</td>
+                <td>忧天废寝，被开导后释然</td>
+                <td>不必杞人忧天（亦可读忧患意识）</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="card card-navy" style="padding:14px 18px;">
+            <div class="card-label">小组探究 · 寓言的文体特点</div>
+            <div class="genre-bar" id="genreBar">
+              <span class="genre-pill" data-g="0"><b>篇幅</b>：短小精悍</span>
+              <span class="genre-pill" data-g="1"><b>人物</b>：典型鲜明</span>
+              <span class="genre-pill" data-g="2"><b>写法</b>：拟人、夸张、反转</span>
+              <span class="genre-pill" data-g="3"><b>作用</b>：寄寓道理、警醒世人</span>
+            </div>
+          </div>
+        </div>
+        <footer class="slide-footer">点击表格行高亮 · 点击文体标签激活</footer>
+      </section>
+
+      <!-- Slide 4 情节与寓意 -->
+      <section class="slide" data-i="3">
+        <header class="slide-header">
+          <span class="slide-tag">学习任务二</span>
+          <span class="slide-num">04 / 08</span>
+        </header>
+        <h2 class="slide-title">品味情节，读懂寓意</h2>
+        <div class="slide-body" style="gap:10px;">
+          <div class="grid-2" style="flex:0;">
+            <div class="card card-navy" style="font-size:14px;line-height:1.6;">
+              <b>关键情节 → 寓意</b><br>
+              「白送」→ 讽刺自高自大<br>
+              凯歌后被粘 → 骄兵必败
+            </div>
+            <div class="card card-red" style="font-size:14px;line-height:1.6;">
+              <b>丁氏澄清 → 勿以讹传讹</b><br>
+              晓之开导 → 解除无谓忧虑
+            </div>
+          </div>
+          <div class="card card-navy">
+            <div class="card-label">深度探究 · 改写《蚊子和狮子》结尾</div>
+            <div class="rewrite-panel">
+              <div class="rewrite-side rewrite-original">
+                <b>原结尾</b><br>蚊子「吹着喇叭，唱着凯歌」，却被蜘蛛网粘住。<br>
+                <mark>寓意：骄兵必败</mark>
+              </div>
+              <div class="rewrite-vs">⇄</div>
+              <div class="rewrite-side rewrite-new" id="rewriteNew">
+                <b>改写后</b><br>蚊子战胜狮子后<strong>悄悄离开</strong>。<br>
+                <mark>寓意：懂得适可而止、保持清醒</mark>
+              </div>
+            </div>
+            <button class="btn-toggle" id="btnRewrite">点击对比改写效果</button>
+          </div>
+          <div class="grid-3">
+            <div class="life-card" data-fable="穿井得一人">
+              <span class="life-num">①</span>未经核实就转发「某地挖出古墓」
+            </div>
+            <div class="life-card" data-fable="赫耳墨斯">
+              <span class="life-num">②</span>因成绩好看不起同学
+            </div>
+            <div class="life-card" data-fable="杞人忧天">
+              <span class="life-num">③</span>听到一点风声就整日焦虑
+            </div>
+          </div>
+        </div>
+        <footer class="slide-footer">寓意藏在情节的「关键一步」里 · 点击生活现象卡片对位寓言</footer>
+      </section>
+
+      <!-- Slide 5 文言积累 -->
+      <section class="slide" data-i="4">
+        <header class="slide-header">
+          <span class="slide-tag">学习任务三</span>
+          <span class="slide-num">05 / 08</span>
+        </header>
+        <h2 class="slide-title">疏通文言 · 积累词语</h2>
+        <div class="slide-body">
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+            <div class="word-card" data-w="闻"><div class="word-char">闻</div><div class="word-mean">听说</div></div>
+            <div class="word-card" data-w="道"><div class="word-char">道</div><div class="word-mean">讲述、说</div></div>
+            <div class="word-card" data-w="亡"><div class="word-char">亡</div><div class="word-mean">同「无」，没有</div></div>
+            <div class="word-card" data-w="晓"><div class="word-char">晓</div><div class="word-mean">开导、告知</div></div>
+            <div class="word-card" data-w="舍然"><div class="word-char">舍然</div><div class="word-mean">消除疑虑的样子</div></div>
+          </div>
+          <div class="card card-red" style="flex:1;overflow:auto;">
+            <div class="card-label">重点句翻译（点击查看参考译文）</div>
+            <div class="trans-box" data-t="1">
+              （1）<mark>得一人之使，非得一人于井中也。</mark>
+              <div class="trans-ans">节省了一个人使用的劳力，并不是在井里挖出一个活人来。</div>
+            </div>
+            <div class="trans-box" data-t="2" style="margin-top:8px;">
+              （2）<mark>求闻之若此，不若无闻也。</mark>
+              <div class="trans-ans">像这样寻求消息，还不如没有听到（更好）。</div>
+            </div>
+            <div class="trans-box" data-t="3" style="margin-top:8px;">
+              （3）<mark>若屈伸呼吸，终日在天中行止，奈何忧崩坠乎？</mark>
+              <div class="trans-ans">你一举一动、一呼一吸，整天都在天空里活动，为什么还担心天会塌下来呢？</div>
+            </div>
+          </div>
+        </div>
+        <footer class="slide-footer">点击字词卡片显示释义 · 点击句子显示译文</footer>
+      </section>
+
+      <!-- Slide 6 多视角解读 -->
+      <section class="slide" data-i="5">
+        <header class="slide-header">
+          <span class="slide-tag">深度探究</span>
+          <span class="slide-num">06 / 08</span>
+        </header>
+        <h2 class="slide-title">「杞人忧天」的多视角解读</h2>
+        <div class="slide-body grid-2">
+          <div class="perspective-card perspective-a active" id="viewA">
+            <h3>视角 A · 讽刺不必要的杞忧</h3>
+            <p style="font-size:15px;line-height:1.7;margin-bottom:10px;">
+              <b>依据：</b>「废寝食者」「奈何忧崩坠乎」
+            </p>
+            <p style="font-size:14px;color:var(--muted);">
+              杞人因缺乏常识，凭空想象天地将崩坠而忧虑，属于毫无根据的盲目担忧。
+            </p>
+            <textarea class="reflect-input" placeholder="写下你的启示……" style="margin-top:12px;"></textarea>
+          </div>
+          <div class="perspective-card perspective-b" id="viewB">
+            <h3>视角 B · 体现忧患意识</h3>
+            <p style="font-size:15px;line-height:1.7;margin-bottom:10px;">
+              <b>依据：</b>「忧天地崩坠，身亡所寄」
+            </p>
+            <p style="font-size:14px;color:var(--muted);">
+              面对浩瀚未知，人类本能地追问自身安放之处，亦可见对自然与命运的深层关切。
+            </p>
+            <textarea class="reflect-input" placeholder="写下你的启示……" style="margin-top:12px;"></textarea>
+          </div>
+        </div>
+        <footer class="slide-footer">点击卡片切换视角焦点 · 镜面双栏，照见不同理解</footer>
+      </section>
+
+      <!-- Slide 7 现实迁移 -->
+      <section class="slide" data-i="6">
+        <header class="slide-header">
+          <span class="slide-tag">现实迁移</span>
+          <span class="slide-num">07 / 08</span>
+        </header>
+        <h2 class="slide-title">给古人一条今天的建议</h2>
+        <div class="slide-body">
+          <div class="card card-navy">
+            <div class="card-label">《穿井得一人》· 传言失真流程</div>
+            <div class="flow-chain" id="flowChain">
+              <div class="flow-node">丁氏原话</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-node">传言失真</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-node">国人传播</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-node">宋君求证</div>
+            </div>
+          </div>
+          <div class="grid-2" style="flex:1;">
+            <div class="card card-red">
+              <div class="card-label">面对网络信息</div>
+              <p style="font-size:17px;line-height:1.8;font-weight:600;color:var(--navy);">
+                <mark>核对来源</mark> · <mark>理性判断</mark> · <mark>不传谣言</mark>
+              </p>
+            </div>
+            <div class="card card-navy">
+              <div class="card-label">课堂小结</div>
+              <p style="font-size:15px;line-height:1.7;">
+                两则文言寓言的现实警醒：<br>
+                信息须求证，忧虑须理性，<br>
+                在短故事中照见<strong>智慧与局限</strong>。
+              </p>
+            </div>
+          </div>
+        </div>
+        <footer class="slide-footer">策展主题四：智慧与局限</footer>
+      </section>
+
+      <!-- Slide 8 作业检测 -->
+      <section class="slide" data-i="7">
+        <header class="slide-header">
+          <span class="slide-tag">作业与检测</span>
+          <span class="slide-num">08 / 08</span>
+        </header>
+        <h2 class="slide-title">巩固与延伸</h2>
+        <div class="slide-body grid-2">
+          <div class="card card-navy">
+            <div class="card-label">必做任务</div>
+            <ol style="font-size:15px;line-height:1.9;padding-left:20px;">
+              <li>用「这则寓言告诉我们……」句式，写《蚊子和狮子》给你的启示（约80字）</li>
+              <li>背诵并默写：<br><mark>得一人之使，非得一人于井中也。</mark></li>
+            </ol>
+          </div>
+          <div class="card card-red">
+            <div class="card-label">延伸拓展</div>
+            <ul style="font-size:15px;line-height:1.9;padding-left:20px;">
+              <li><b>选做：</b>任选一则寓言新编（100—200字），写出修改后的寓意</li>
+              <li><b>拓展：</b>搜集一则网络谣言案例，与《穿井得一人》对比分析传播规律</li>
+              <li><b>选做：</b>完善「寓言档案卡」，提交第四条展品说明</li>
+            </ul>
+          </div>
+        </div>
+        <footer class="slide-footer">短故事，大镜子 —— 愿你在阅读中涵养智慧，照见真实</footer>
+      </section>
+
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="btnPrev" disabled>← 上一页</button>
+    <span id="pageInfo">1 / 8</span>
+    <button id="btnNext">下一页 →</button>
+    <button id="btnFs">全屏</button>
+  </div>
+
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    const stage = document.getElementById("stage");
+    const btnPrev = document.getElementById("btnPrev");
+    const btnNext = document.getElementById("btnNext");
+    const btnFs = document.getElementById("btnFs");
+    const pageInfo = document.getElementById("pageInfo");
+    let cur = 0;
+
+    function show(i) {
+      slides[cur].classList.remove("active");
+      cur = Math.max(0, Math.min(i, slides.length - 1));
+      slides[cur].classList.add("active");
+      pageInfo.textContent = `${cur + 1} / ${slides.length}`;
+      btnPrev.disabled = cur === 0;
+      btnNext.disabled = cur === slides.length - 1;
+      restartFlowAnim();
+    }
+
+    function next() { show(cur + 1); }
+    function prev() { show(cur - 1); }
+
+    btnPrev.addEventListener("click", prev);
+    btnNext.addEventListener("click", next);
+    btnFs.addEventListener("click", () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      const nextKeys = ["ArrowRight", "ArrowDown", "PageDown", " "];
+      const prevKeys = ["ArrowLeft", "ArrowUp", "PageUp"];
+      if (nextKeys.includes(e.key)) { e.preventDefault(); next(); }
+      if (prevKeys.includes(e.key)) prev();
+      if (e.key === "f" || e.key === "F") btnFs.click();
+    });
+
+    function fitStage() {
+      const sw = 1280, sh = 720;
+      const scale = Math.min(window.innerWidth / sw, (window.innerHeight - 60) / sh);
+      stage.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener("resize", fitStage);
+    fitStage();
+
+    // Archive table highlight
+    document.querySelectorAll(".archive-table .data-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        document.querySelectorAll(".archive-table .data-row").forEach(r => r.classList.remove("active"));
+        row.classList.add("active");
+      });
+    });
+
+    // Genre pills
+    document.querySelectorAll(".genre-pill").forEach((pill) => {
+      pill.addEventListener("click", () => pill.classList.toggle("active"));
+    });
+
+    // Rewrite toggle
+    const rewriteNew = document.getElementById("rewriteNew");
+    document.getElementById("btnRewrite").addEventListener("click", () => {
+      rewriteNew.classList.toggle("show");
+    });
+
+    // Life match cards
+    document.querySelectorAll(".life-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        card.classList.toggle("matched");
+        const fb = card.dataset.fable;
+        card.title = card.classList.contains("matched") ? `对位：《${fb}》` : "";
+      });
+    });
+
+    // Word cards
+    document.querySelectorAll(".word-card").forEach((card) => {
+      card.addEventListener("click", () => card.classList.toggle("revealed"));
+    });
+
+    // Translation boxes
+    document.querySelectorAll(".trans-box").forEach((box) => {
+      box.addEventListener("click", () => box.classList.toggle("show-ans"));
+    });
+
+    // Perspective cards
+    const viewA = document.getElementById("viewA");
+    const viewB = document.getElementById("viewB");
+    viewA.addEventListener("click", () => {
+      viewA.classList.add("active");
+      viewB.classList.remove("active");
+    });
+    viewB.addEventListener("click", () => {
+      viewB.classList.add("active");
+      viewA.classList.remove("active");
+    });
+
+    // Flow animation restart on slide enter
+    function restartFlowAnim() {
+      const chain = document.getElementById("flowChain");
+      if (!chain || cur !== 6) return;
+      const nodes = chain.querySelectorAll(".flow-node, .flow-arrow");
+      nodes.forEach((n) => {
+        n.style.animation = "none";
+        void n.offsetWidth;
+        n.style.animation = "";
+      });
+    }
+  </script>
+</body>
+</html>
